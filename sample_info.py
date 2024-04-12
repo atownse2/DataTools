@@ -12,8 +12,9 @@ hadoop_redirector = "root://deepthought.crc.nd.edu/"
 nd_redirector = "root://ndcms.crc.nd.edu/"
 
 ## Configuration
-hadoop_storage = '/hadoop/store/user/atownse2/RSTriPhoton'
-vast_storage = '/project01/ndcms/atownse2/RSTriPhoton'
+USER = os.environ['USER']
+hadoop_storage = f'/hadoop/store/user/{USER}/RSTriPhoton'
+vast_storage = f'/project01/ndcms/{USER}/RSTriPhoton'
 local_storage = vast_storage
 
 all_data_formats = ['MiniAODv2', 'NanoAODv9']
@@ -64,106 +65,67 @@ class SampleInfo:
                     del dataset_info[data_format]
         self.write()
 
-class Datasets:
-    """High level class for intuitively and flexibly acessing datasets"""
-
-    def __init__(self, dTypes, era, data_format, subset=None, storage_base=vast_storage,):
-
-        if isinstance(dTypes, str): dTypes = dTypes.split(',')
-        self.dTypes = dTypes
-
-        self.era = era
-        self.data_format = data_format
-        self.subset = subset
-
-        self.storage_base = storage_base
-
-        self.years = get_years_from_era(era)
-        self.datasets = self.get_datasets()
-    
-    def __iter__(self):
-        return iter(self.datasets)
-
-    def __len__(self):
-        return len(self.datasets)
-
-    def __getitem__(self, key):
-        return self.datasets[key]
-
-    @property
-    def name(self):
-        return f"{'-'.join(self.dTypes)}_{self.era}_{self.data_format}"
-
-    def get_datasets(self):
-        sample_info = SampleInfo()
-        
-        datasets = []
-        for dType in self.dTypes:
-            for dataset_name, dataset_info in sample_info[dType]['datasets'].items():
-                if self.subset is not None and dataset_name not in self.subset:
-                    continue
-
-                d = Dataset(dType, dataset_name, self.data_format)
-                if self.data_format not in dataset_info:
-                    print(f"Warning - data format {self.data_format} not found for {dataset_name}, updating sample info with storage base : {self.storage_base}")
-                    files_exist = d.update_sample_info(storage_base=self.storage_base)
-                    if files_exist == False:
-                        print(f"Warning - no files found for {d.name}")
-                        continue
-                
-                datasets.append(d)
-
-        return datasets
 
 class Dataset:
-    def __init__(self, dType, dataset, data_format, access=None):
+    """
+    A Dataset is the smallest division of a sample that can be processed
+    E.g. dataset tag : "GJets_HT-40To100_2018" with data format :"NanoAODv9"
+    """
+
+    def __init__(self, dType, dataset_tag, data_format, storage_base=vast_storage):
         self.dType = dType
-        self.dataset = dataset
-        self.data_format = data_format
-        self.access = access
-
         self.isMC = dType != 'data'
+        self.dTag = 'mc' if self.isMC else 'data'
+        
+        self.dataset_tag = dataset_tag
+        self.year = dataset_tag.split('_')[-1]
 
-        self._files = None
+        self.data_format = data_format
+        self.storage_base = storage_base
 
-    def update_sample_info(self, storage_base=vast_storage, test=False):
-        print(f"Updating sample info for {self.name}")
-        if test: self.data_format += "_test"
-        tag = "mc" if self.isMC else "data"
-        output_dir = f"{storage_base}/{tag}/{self.data_format}"
-        if not os.path.isdir(output_dir):
-            os.makedirs(output_dir)
+    def update_sample_info(self):
 
-        if "ceph" in storage_base:
+        if "ceph" in self.storage_base:
+            raise NotImplementedError('File access for Ceph not implemented')
             access_method = 'ceph'
         else:
             access_method = 'local'
 
-        self.access = f"{access_method}:{output_dir}/{self.name}"
-        if len(self.files) == 0:
-            return False
+        self._access = f"{access_method}:{self.storage_dir}/{self.name}"
+        if len(self.files) != 0:
+            sample_info = SampleInfo()
+            sample_info[self.dType]['datasets'][self.dataset_tag].update({self.data_format: self.access})
+            sample_info.write()
 
-        sample_info = SampleInfo()
-        sample_info[self.dType]['datasets'][self.dataset].update({self.data_format: self.access})
-        sample_info.write()
-        return True
+        return self
 
-
-    def get_access_from_sample_info(self):
-        sample_info = SampleInfo()
-        return sample_info.get_access(self.dType, self.dataset, self.data_format)
+    @property
+    def access(self):
+        if not hasattr(self, '_access'):
+            sample_info = SampleInfo()
+            self._access = sample_info.get_access(self.dType, self.dataset_tag, self.data_format)
+        return self._access
 
     @property
     def name(self):
-        return f'{self.dataset}_{self.data_format}'
+        return f'{self.dataset_tag}_{self.data_format}'
+
+    @property
+    def storage_dir(self):
+        data_dir = f"{self.storage_base}/{self.dTag}/{self.data_format}"
+        if not os.path.isdir(data_dir):
+            os.makedirs(data_dir)
+        return data_dir
+
+    def reset_files(self):
+        if hasattr(self, '_files'):
+            del self._files
 
     @property
     def files(self):
-        if self._files is not None:
+        if hasattr(self, '_files'):
             return self._files
 
-        if self.access is None:
-            self.access = self.get_access_from_sample_info()
         access_method, access_string = self.access.split(':')
         if access_method == 'das':
             filelist = get_das_filelist(access_string)
@@ -174,12 +136,80 @@ class Dataset:
                 filelist = [f"file:{f}" for f in filelist]
         else:
             raise ValueError(f'Access method {access_method} not recognized')
-        self._files = filelist
+        
+        if len(filelist) > 0:
+            self._files = filelist
         return filelist
 
-    # @property
-    # def fileset(self):
-    #     return {self.name: {"files":{f: {'object_path': 'Events'} for f in self.files}}}
+class Datasets:
+    """High level class for intuitively and flexibly acessing datasets"""
+
+    dataset_class = Dataset
+
+    def __init__(self, dTypes, era, data_format, subset=None, storage_base=vast_storage,):
+        if isinstance(dTypes, str): dTypes = dTypes.split(',')
+        self.dTypes = dTypes
+        self.era = era
+        self.years = get_years_from_era(era)
+
+        self.data_format = data_format
+        self.storage_base = storage_base
+
+        if isinstance(subset, str): subset = subset.split(',')
+        self.subset = subset
+        self.datasets = self.get_datasets()
+
+    def __iter__(self):
+        return iter(self.datasets.values())
+
+    def __len__(self):
+        return len(self.datasets.keys())
+
+    def __getitem__(self, key):
+        if isinstance(key, int):
+            return list(self.datasets.values())[key]
+        elif isinstance(key, str):
+            if key in self.datasets:
+                return self.datasets[key]
+            else:
+                _datasets = [d for d in self if key in d.dataset_tag]
+                if len(_datasets) == 1:
+                    return _datasets[0]
+                elif len(_datasets) == 0:
+                    raise ValueError(f"Dataset {key} not found")
+                else:
+                    raise ValueError(f"Multiple datasets found for {key}: {[d.dataset_tag for d in _datasets]}, don't know what to do with this yet")
+        elif isinstance(key, slice):
+            subset = [d.dataset_tag for d in self.datasets.values()][key]
+            return type(self)(
+                self.dTypes, self.era, self.data_format,
+                subset=subset, 
+                storage_base=self.storage_base
+                )
+        else:
+            raise ValueError(f'Class Datasets does not support key type {type(key)}')
+
+    @property
+    def name(self):
+        return f"{'-'.join(self.dTypes)}_{self.era}_{self.data_format}"
+
+    def get_datasets(self):
+        sample_info = SampleInfo()
+        datasets = {}
+        for dType in self.dTypes:
+            for dataset_tag, dataset_info in sample_info[dType]['datasets'].items():
+                if self.subset and dataset_tag not in self.subset:
+                    continue
+
+                dataset = self.dataset_class(
+                    dType, dataset_tag, self.data_format,
+                    storage_base=self.storage_base
+                    )
+
+                if self.data_format not in dataset_info:
+                    dataset.update_sample_info()
+                datasets[dataset.name] = dataset
+        return datasets
 
 
 def query_das(query, outputfile):
