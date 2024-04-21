@@ -1,5 +1,4 @@
 import os
-import sys
 import glob
 
 import json
@@ -22,7 +21,13 @@ all_data_storages = {'vast': vast_storage, 'hadoop': hadoop_storage}
 
 years = ["2016", "2017", "2018"]
 
-samples_config = f'{config_dir}/samples.json'
+lumis = {
+  "2016" : 35.9, # fb^-1
+  "2017" : 41.5,
+  "2018" : 59.6
+  }
+
+samples_config = f'{top_dir}/data_tools/samples.json'
 
 def get_years_from_era(era):
     if "," in era: return era.split(',')
@@ -71,6 +76,7 @@ class Dataset:
     A Dataset is the smallest division of a sample that can be processed
     E.g. dataset tag : "GJets_HT-40To100_2018" with data format :"NanoAODv9"
     """
+    file_extension = '.root'
 
     def __init__(self, dType, dataset_tag, data_format, storage_base=vast_storage):
         self.dType = dType
@@ -78,10 +84,16 @@ class Dataset:
         self.dTag = 'mc' if self.isMC else 'data'
         
         self.dataset_tag = dataset_tag
-        self.year = dataset_tag.split('_')[-1]
 
         self.data_format = data_format
         self.storage_base = storage_base
+
+    @property
+    def year(self):
+        for y in years:
+            if y in self.dataset_tag:
+                return y
+        raise ValueError(f'Year not found in dataset tag {self.dataset_tag}')
 
     def update_sample_info(self):
 
@@ -99,12 +111,22 @@ class Dataset:
 
         return self
 
+    def get(self, key):
+        raise NotImplementedError(f'Getting {key} from Dataset not implemented')
+
+    def __getitem__(self, key):
+        return self.get(key)
+
     @property
     def access(self):
         if not hasattr(self, '_access'):
             sample_info = SampleInfo()
             self._access = sample_info.get_access(self.dType, self.dataset_tag, self.data_format)
         return self._access
+
+    @property
+    def sample_name(self):
+        return self.dataset_tag.replace(f'_{self.year}', '')
 
     @property
     def name(self):
@@ -137,6 +159,8 @@ class Dataset:
         else:
             raise ValueError(f'Access method {access_method} not recognized')
         
+        filelist = [f for f in filelist if f.endswith(self.file_extension)]
+
         if len(filelist) > 0:
             self._files = filelist
         return filelist
@@ -165,6 +189,9 @@ class Datasets:
     def __len__(self):
         return len(self.datasets.keys())
 
+    def get(self, key):
+        raise NotImplementedError(f'Getting {key} from Datasets not implemented') 
+
     def __getitem__(self, key):
         if isinstance(key, int):
             return list(self.datasets.values())[key]
@@ -172,13 +199,14 @@ class Datasets:
             if key in self.datasets:
                 return self.datasets[key]
             else:
-                _datasets = [d for d in self if key in d.dataset_tag]
-                if len(_datasets) == 1:
-                    return _datasets[0]
-                elif len(_datasets) == 0:
-                    raise ValueError(f"Dataset {key} not found")
-                else:
-                    raise ValueError(f"Multiple datasets found for {key}: {[d.dataset_tag for d in _datasets]}, don't know what to do with this yet")
+                return self.get(key)
+                # _datasets = [d for d in self if key in d.dataset_tag]
+                # if len(_datasets) == 1:
+                #     return _datasets[0]
+                # elif len(_datasets) == 0:
+                #     raise ValueError(f"Dataset {key} not found")
+                # else:
+                #     raise ValueError(f"Multiple datasets found for {key}: {[d.dataset_tag for d in _datasets]}, don't know what to do with this yet")
         elif isinstance(key, slice):
             subset = [d.dataset_tag for d in self.datasets.values()][key]
             return type(self)(
@@ -257,6 +285,7 @@ def dataset_name_from_das(self, das_name):
             era += "HIPM"
 
     return f"{name}_{era}"
+#### End Data Tools
 
 if __name__ == '__main__':
     
