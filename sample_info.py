@@ -199,14 +199,14 @@ class Datasets:
             if key in self.datasets:
                 return self.datasets[key]
             else:
-                return self.get(key)
-                # _datasets = [d for d in self if key in d.dataset_tag]
-                # if len(_datasets) == 1:
-                #     return _datasets[0]
-                # elif len(_datasets) == 0:
-                #     raise ValueError(f"Dataset {key} not found")
-                # else:
-                #     raise ValueError(f"Multiple datasets found for {key}: {[d.dataset_tag for d in _datasets]}, don't know what to do with this yet")
+                _dataset = [d for d in self.datasets.values() if key in d.dataset_tag]
+                if len(_dataset) == 1:
+                    return _dataset[0]
+                elif len(_dataset) == 0:
+                    raise ValueError(f'Dataset {key} not found in Datasets')
+                else:
+                    raise ValueError(f'Multiple datasets found for {key}')
+
         elif isinstance(key, slice):
             subset = [d.dataset_tag for d in self.datasets.values()][key]
             return type(self)(
