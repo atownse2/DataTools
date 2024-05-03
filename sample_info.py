@@ -14,7 +14,9 @@ nd_redirector = "root://ndcms.crc.nd.edu/"
 USER = os.environ['USER']
 hadoop_storage = f'/hadoop/store/user/{USER}/RSTriPhoton'
 vast_storage = f'/project01/ndcms/{USER}/RSTriPhoton'
-local_storage = vast_storage
+
+# local_storage = vast_storage
+local_storage = "/home/atownse2/Public/RSTriPhoton"
 
 all_data_formats = ['MiniAODv2', 'NanoAODv9']
 all_data_storages = {'vast': vast_storage, 'hadoop': hadoop_storage}
@@ -78,7 +80,7 @@ class Dataset:
     """
     file_extension = '.root'
 
-    def __init__(self, dType, dataset_tag, data_format, storage_base=vast_storage):
+    def __init__(self, dType, dataset_tag, data_format, storage_base=local_storage):
         self.dType = dType
         self.isMC = dType != 'data'
         self.dTag = 'mc' if self.isMC else 'data'
@@ -152,6 +154,7 @@ class Dataset:
         if access_method == 'das':
             filelist = get_das_filelist(access_string)
         elif 'local' in access_method:
+            access_string = f"{self.storage_dir}/{self.name}"
             filelist = get_local_filelist(access_string)
             # Assume MiniAOD files are CMSSW inputs for now
             if self.data_format == 'MiniAODv2':
@@ -170,7 +173,7 @@ class Datasets:
 
     dataset_class = Dataset
 
-    def __init__(self, dTypes, era, data_format, subset=None, storage_base=vast_storage,):
+    def __init__(self, dTypes, era, data_format, subset=None, storage_base=local_storage,):
         if isinstance(dTypes, str): dTypes = dTypes.split(',')
         self.dTypes = dTypes
         self.era = era
