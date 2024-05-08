@@ -80,7 +80,14 @@ class Dataset:
     """
     file_extension = '.root'
 
-    def __init__(self, dType, dataset_tag, data_format, storage_base=local_storage):
+    def __init__(
+            self,
+            dType: str,
+            dataset_tag: str,
+            data_format: str,
+            storage_base: str = local_storage,
+            ):
+        
         self.dType = dType
         self.isMC = dType != 'data'
         self.dTag = 'mc' if self.isMC else 'data'
@@ -173,7 +180,15 @@ class Datasets:
 
     dataset_class = Dataset
 
-    def __init__(self, dTypes, era, data_format, subset=None, storage_base=local_storage,):
+    def __init__(
+            self,
+            dTypes: str | list[str],
+            era: str,
+            data_format: str,
+            subset: str | list[str] | list[Dataset] = None,
+            storage_base: str = local_storage,
+            ):
+    
         if isinstance(dTypes, str): dTypes = dTypes.split(',')
         self.dTypes = dTypes
         self.era = era
@@ -182,9 +197,7 @@ class Datasets:
         self.data_format = data_format
         self.storage_base = storage_base
 
-        if isinstance(subset, str): subset = subset.split(',')
-        self.subset = subset
-        self.datasets = self.get_datasets()
+        self.datasets = self.get_datasets(subset)
 
     def __iter__(self):
         return iter(self.datasets.values())
@@ -193,25 +206,39 @@ class Datasets:
         return len(self.datasets.keys())
 
     def get(self, key):
-        raise NotImplementedError(f'Getting {key} from Datasets not implemented') 
+        raise NotImplementedError(f'Getting {key} from {self.dataset_class} not implemented') 
 
     def __getitem__(self, key):
+        """Return a subset of the datasets or other objects through self.get()"""
         if isinstance(key, int):
             return list(self.datasets.values())[key]
         elif isinstance(key, str):
-            if key in self.datasets:
-                return self.datasets[key]
+            subset = [d for name, d in self.datasets.items() if key in name]
+            if len(subset) == 1:
+                return subset[0]
+            elif len(subset) > 1:
+                return type(self)(
+                    self.dTypes, self.era, self.data_format,
+                    subset=subset, 
+                    storage_base=self.storage_base
+                    )
             else:
                 return self.get(key)
-                # _datasets = [d for d in self if key in d.dataset_tag]
-                # if len(_datasets) == 1:
-                #     return _datasets[0]
-                # elif len(_datasets) == 0:
-                #     raise ValueError(f"Dataset {key} not found")
-                # else:
-                #     raise ValueError(f"Multiple datasets found for {key}: {[d.dataset_tag for d in _datasets]}, don't know what to do with this yet")
         elif isinstance(key, slice):
-            subset = [d.dataset_tag for d in self.datasets.values()][key]
+            subset = list(self.datasets.values())[key]
+            return type(self)(
+                self.dTypes, self.era, self.data_format,
+                subset=subset, 
+                storage_base=self.storage_base
+                )
+        elif isinstance(key, list):
+            subset = []
+            for k in key:
+                if isinstance(k, str):
+                    _subset = [d for name, d in self.datasets.items() if k in name]
+                    subset.extend(_subset)
+                elif isinstance(k, int):
+                    subset.append(list(self.datasets.values())[k])
             return type(self)(
                 self.dTypes, self.era, self.data_format,
                 subset=subset, 
@@ -219,17 +246,25 @@ class Datasets:
                 )
         else:
             raise ValueError(f'Class Datasets does not support key type {type(key)}')
+        
 
     @property
     def name(self):
         return f"{'-'.join(self.dTypes)}_{self.era}_{self.data_format}"
 
-    def get_datasets(self):
+    def get_datasets(self, subset):
+
+        if type(subset) == list:# and all(isinstance(d, Dataset) for d in subset):
+            # TODO check if all elements are of type Dataset
+            return {d.name: d for d in subset}
+        
+        if isinstance(subset, str): subset = subset.split(',')
+
         sample_info = SampleInfo()
         datasets = {}
         for dType in self.dTypes:
             for dataset_tag, dataset_info in sample_info[dType]['datasets'].items():
-                if self.subset and dataset_tag not in self.subset:
+                if subset and dataset_tag not in subset:
                     continue
 
                 dataset = self.dataset_class(
