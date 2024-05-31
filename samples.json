@@ -3,7 +3,7 @@
         "das_queries": [
             "dataset=/GJets_HT-*_TuneCP5_13TeV-madgraphMLM-pythia8/RunIISummer20UL18MiniAODv2-*_realistic_v16_L1v1-v2/MINIAODSIM"
         ],
-        "datasets": {
+        "samples": {
             "GJets_HT-100To200_2018": {
                 "MiniAODv2": "das:/GJets_HT-100To200_TuneCP5_13TeV-madgraphMLM-pythia8/RunIISummer20UL18MiniAODv2-4cores5k_106X_upgrade2018_realistic_v16_L1v1-v2/MINIAODSIM"
             },
@@ -25,8 +25,9 @@
         "das_queries": [
             "dataset=/EGamma/Run2018*-UL2018_MiniAODv2-v*/MINIAOD"
         ],
-        "datasets": {
+        "samples": {
             "EGamma_2018A": {
+                "NanoAODv9": "local:/project01/ndcms/atownse2/RSTriPhoton/data/NanoAODv9/EGamma_Run2018A",
                 "FlatAODv3": "hadoop:/hadoop/store/user/atownse2/RSTriPhoton/data/FlatAODv3/EGamma_2018A_FlatAODv3",
                 "MLNanoAODv9": "local:/project01/ndcms/atownse2/RSTriPhoton/data/MLNanoAODv9/EGamma_2018A_MLNanoAODv9",
                 "MLNanoAODv9_test": "local:/project01/ndcms/atownse2/RSTriPhoton/test/data/MLNanoAODv9_test/EGamma_2018A_MLNanoAODv9_test",
@@ -35,6 +36,7 @@
                 "skim_preselection": "local:/project01/ndcms/atownse2/RSTriPhoton/data/skim_preselection/EGamma_2018A_skim_preselection"
             },
             "EGamma_2018B": {
+                "NanoAODv9": "local:/project01/ndcms/atownse2/RSTriPhoton/data/NanoAODv9/EGamma_Run2018B",
                 "FlatAODv3": "hadoop:/hadoop/store/user/atownse2/RSTriPhoton/data/FlatAODv3/EGamma_2018B_FlatAODv3",
                 "MLNanoAODv9": "local:/project01/ndcms/atownse2/RSTriPhoton/data/MLNanoAODv9/EGamma_2018B_MLNanoAODv9",
                 "MiniAODv2": "das:/EGamma/Run2018B-UL2018_MiniAODv2-v1/MINIAOD",
@@ -42,12 +44,14 @@
                 "skim_preselection": "local:/project01/ndcms/atownse2/RSTriPhoton/data/skim_preselection/EGamma_2018B_skim_preselection"
             },
             "EGamma_2018C": {
+                "NanoAODv9": "local:/project01/ndcms/atownse2/RSTriPhoton/data/NanoAODv9/EGamma_Run2018C",
                 "FlatAODv3": "hadoop:/hadoop/store/user/atownse2/RSTriPhoton/data/FlatAODv3/EGamma_2018C_FlatAODv3",
                 "MLNanoAODv9": "local:/project01/ndcms/atownse2/RSTriPhoton/data/MLNanoAODv9/EGamma_2018C_MLNanoAODv9",
                 "MiniAODv2": "das:/EGamma/Run2018C-UL2018_MiniAODv2-v1/MINIAOD",
                 "skim_preselection": "local:/project01/ndcms/atownse2/RSTriPhoton/data/skim_preselection/EGamma_2018C_skim_preselection"
             },
             "EGamma_2018D": {
+                "NanoAODv9": "local:/project01/ndcms/atownse2/RSTriPhoton/data/NanoAODv9/EGamma_Run2018D",
                 "FlatAODv3": "hadoop:/hadoop/store/user/atownse2/RSTriPhoton/data/FlatAODv3/EGamma_2018D_FlatAODv3",
                 "MLNanoAODv9": "local:/project01/ndcms/atownse2/RSTriPhoton/data/MLNanoAODv9/EGamma_2018D_MLNanoAODv9",
                 "MiniAODv2": "das:/EGamma/Run2018D-UL2018_MiniAODv2-v2/MINIAOD",
@@ -57,9 +61,16 @@
     },
     "jet_data": {
         "das_queries": "...",
-        "datasets": {
+        "samples": {
             "JetHT_2018A": {
                 "MiniAODv2": "das:/JetHT/Run2018A-UL2018_MiniAODv2-v1/MINIAOD"
+            }
+        }
+    },
+    "Haa4e":{
+        "samples":{
+            "Haa4e_mass20MeV_ctau010um": {
+                "MiniAODv2": "local:/scratch365/atownse2/REU2024/mc/MiniAODv2/Haa4e_mass20MeV_ctau010um"
             }
         }
     },
@@ -67,7 +78,7 @@
         "das_queries": [
             "dataset=/BkkToGRadionToGGG_M1-*_R0-*_TuneCP5_13TeV-madgraph-pythia8/RunIISummer20UL18MiniAODv2-106X_upgrade2018_realistic_v16_L1v1-v3/MINIAODSIM"
         ],
-        "datasets": {
+        "samples": {
             "BkkToGRadionToGGG_M1-1000_R0-12p5_2018": {
                 "MLNanoAODv9": "local:/project01/ndcms/atownse2/RSTriPhoton/mc/MLNanoAODv9/BkkToGRadionToGGG_M1-1000_R0-12p5_2018_MLNanoAODv9",
                 "MiniAODv2": "das:/BkkToGRadionToGGG_M1-1000_R0-12p5_TuneCP5_13TeV-madgraph-pythia8/RunIISummer20UL18MiniAODv2-106X_upgrade2018_realistic_v16_L1v1-v3/MINIAODSIM",
