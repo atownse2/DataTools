@@ -21,8 +21,10 @@ USER = os.environ['USER']
 hadoop_storage = f'/hadoop/store/user/{USER}/RSTriPhoton'
 vast_storage = f'/project01/ndcms/{USER}/RSTriPhoton'
 
-local_storage = vast_storage
-# local_storage = "/home/atownse2/Public/RSTriPhoton"
+# local_storage = vast_storage
+local_storage = top_dir
+
+skim_storage = top_dir
 
 all_data_formats = ['MiniAODv2', 'NanoAODv9']
 all_data_storages = {'vast': vast_storage, 'hadoop': hadoop_storage}
@@ -35,7 +37,7 @@ lumis = {
   "2018" : 59.6
   }
 
-samples_config = f'{top_dir}/data_tools/samples.json'
+datasets_config = f'{config_dir}/datasets.json'
 
 def get_years_from_era(era):
     if "," in era: return era.split(',')
@@ -43,51 +45,57 @@ def get_years_from_era(era):
     elif era == "Run2" : return years
     else: raise ValueError(f'era {era} not recognized')
 
+def format_storage(access_string):
+    if "LOCAL_STORAGE" in access_string:
+        access_string = access_string.replace("LOCAL_STORAGE", local_storage)
+    if "SKIM_STORAGE" in access_string:
+        access_string = access_string.replace("SKIM_STORAGE", skim_storage)
+    return access_string
 
-class SampleInfo:
-    """Class for handling sample information and access"""
+class DatasetInfo:
+    """Class for handling dataset information and access"""
 
     def __init__(self):
-        self.sample_info = self.get()
+        self.dataset_info = self.get()
     
     def get(self):
-        with open(samples_config) as f:
+        with open(datasets_config) as f:
             return json.load(f)
     
     def write(self):
-        with open(samples_config, 'w') as f:
-            json.dump(self.sample_info, f, indent=4)
+        with open(datasets_config, 'w') as f:
+            json.dump(self.dataset_info, f, indent=4)
 
     def __getitem__(self, dType):
-        if dType not in self.sample_info:
+        if dType not in self.dataset_info:
             self.add_dType(dType)
-            raise ValueError(f"dType {dType} not configured, add a das query to samples.yml.")
-        return self.sample_info[dType]
+            raise ValueError(f"dType {dType} not configured, add a das query to datasets.yml.")
+        return self.dataset_info[dType]
 
     def add_dType(self, dType):
-        if dType not in self.sample_info:
-            self.sample_info[dType] = { 'das_queries' : [], "samples": {} }
+        if dType not in self.dataset_info:
+            self.dataset_info[dType] = { 'das_queries' : [], "datasets": {} }
             self.write()    
 
-    def add_dataset(self, dType, sample_name, data_format, access):
+    def add_dataset(self, dType, dataset_name, data_format, access):
         if dType not in self:
             self.add_dType(dType)
-        if sample_name not in self[dType]['samples']:
-            self[dType]['samples'][sample_name] = {data_format: access}
+        if dataset_name not in self[dType]['datasets']:
+            self[dType]['datasets'][dataset_name] = {data_format: access}
         else:
-            print(f"Warning: Dataset {sample_name}_{data_format} already exists, overwriting...")
-            self[dType]['samples'][sample_name][data_format] = access
+            print(f"Warning: Dataset {dataset_name}_{data_format} already exists, overwriting...")
+            self[dType]['datasets'][dataset_name][data_format] = access
         self.write()
 
-    def get_access(self, dType, sample_name, data_format):
-        samples = self[dType]['samples']
-        if sample_name not in samples or data_format not in samples[sample_name]:
+    def get_access(self, dType, dataset_name, data_format):
+        datasets = self[dType]['datasets']
+        if dataset_name not in datasets or data_format not in datasets[dataset_name]:
             return None
-        return samples[sample_name][data_format]
+        return datasets[dataset_name][data_format]
 
     def remove_data_format(self, data_format):
-        for dType, dInfo in self.sample_info.items():
-            for dataset, info in dInfo['samples'].items():
+        for dType, dInfo in self.dataset_info.items():
+            for dataset, info in dInfo['datasets'].items():
                 if data_format in info:
                     del info[data_format]
         self.write()
@@ -99,19 +107,19 @@ class Dataset:
     def __init__(
             self,
             dType: str,
-            sample_name: str,
+            dataset_name: str,
             data_format: str,
             acess: str = None,
             storage_base: str = None,
-            update_sample_info: bool = False,
+            update_dataset_info: bool = False,
             ):
         """
         Initialize a dataset object
 
         Args:
-            dType (str): Data type of the sample (e.g. data, GJets, signal, etc.)
-            sample_name (str): Name of the sample (e.g. GJets_HT-40To100_2018)
-            data_format (str): Format of the sample (e.g. MiniAODv2, NanoAODv9, etc.)
+            dType (str): Data type of the dataset (e.g. data, GJets, signal, etc.)
+            dataset_name (str): Name of the dataset (e.g. GJets_HT-40To100_2018)
+            data_format (str): Format of the dataset (e.g. MiniAODv2, NanoAODv9, etc.)
             acess (str): Specification for dataset access (e.g. das:/GJets_HT-40To100_2018)
             storage_base (str): Base storage directory for the dataset (if stored locally)
         """
@@ -120,23 +128,21 @@ class Dataset:
         self.isMC = dType != 'data'
         self.dTag = 'mc' if self.isMC else 'data'
         if dType == 'signal':
-            self.signal_point = SignalPoint(tag=sample_name)
+            self.signal_point = SignalPoint(tag=dataset_name)
         
-        self.sample_name = sample_name
+        self.dataset_name = dataset_name
         self.data_format = data_format
         
-        if update_sample_info:
-            SampleInfo().add_dataset(dType, sample_name, data_format, acess)
+        if update_dataset_info:
+            DatasetInfo().add_dataset(dType, dataset_name, data_format, acess)
 
         self.access = acess
-        if self.access is None: # Try to get the access from the sample info
-            self.access = SampleInfo().get_access(dType, sample_name, data_format)
-            if storage_base is not None and self.access is not None:
-                assert storage_base in self.access, f"Storage base: {storage_base} does not match access specification: {self.access}"
+        if self.access is None: # Try to get the access from the dataset info
+            self.access = DatasetInfo().get_access(dType, dataset_name, data_format)
         if self.access is None: # If still no access, use the storage base
             assert storage_base is not None, "Storage base must be specified if access specification is not"
-            print(f"Warning: Access not specified for dataset {sample_name}_{data_format}, using {storage_base} instead. Consider updating samples.json somehow.")
-            self.access = f"local:{storage_base}/{self.dTag}/{self.data_format}/{self.sample_name}"
+            print(f"Warning: Access not specified for dataset {dataset_name}_{data_format}, using {storage_base} instead. Consider updating datasets.json somehow.")
+            self.access = f"local:{storage_base}/{self.dTag}/{self.data_format}/{self.dataset_name}"
 
     def __getitem__(self, key):
         if key in self.__dict__:
@@ -148,19 +154,21 @@ class Dataset:
     @property
     def year(self):
         for y in years:
-            if y in self.sample_name:
+            if y in self.dataset_name:
                 return y
-        print(f"Warning: Year not found in dataset tag {self.sample_name}, defaulting to 2018")
+        print(f"Warning: Year not found in dataset tag {self.dataset_name}, defaulting to 2018")
         return "2018"
-        # raise ValueError(f'Year not found in dataset tag {self.sample_name}')
+        # raise ValueError(f'Year not found in dataset tag {self.dataset_name}')
 
     @property
     def name(self):
-        return f'{self.sample_name}_{self.data_format}'
+        return f'{self.dataset_name}_{self.data_format}'
 
     @property
     def storage_dir(self):
         storage_dir = os.path.dirname(self.access.split(':')[1])
+        storage_dir = format_storage(storage_dir)
+
         if not os.path.isdir(storage_dir):
             os.makedirs(storage_dir)
         return storage_dir
@@ -178,6 +186,7 @@ class Dataset:
         if access_method == 'das':
             filelist = get_das_filelist(access_string)
         elif 'local' in access_method:
+            access_string = format_storage(access_string)
             filelist = get_local_filelist(access_string)
 
             # Assume MiniAOD files are CMSSW inputs
@@ -210,12 +219,12 @@ class Datasets:
         Initialize a Datasets object
 
         Args:
-            dTypes (str or list): Data types of the samples (e.g. data, GJets, signal, etc.)
-            era (str): Era of the samples (e.g. 2018, Run2, etc.)
-            data_format (str): Format of the samples (e.g. MiniAODv2, NanoAODv9, etc.)
+            dTypes (str or list): Data types of the datasets (e.g. data, GJets, signal, etc.)
+            era (str): Era of the datasets (e.g. 2018, Run2, etc.)
+            data_format (str): Format of the datasets (e.g. MiniAODv2, NanoAODv9, etc.)
             subset (str, list): Subset of datasets to include can be a list of strings
                 or a list of Dataset objects. String specification can be a comma separated,
-                and should follow the pattern "dType/sample_name" (e.g. "GJets_HT-40To100_2018")
+                and should follow the pattern "dType/dataset_name" (e.g. "GJets_HT-40To100_2018")
             storage_base (str): Base storage directory for the datasets (if stored locally)
         """
 
@@ -294,16 +303,16 @@ class Datasets:
                     ]
                 return {d.name: d for d in _subset}
 
-        sample_info = SampleInfo()
+        dataset_info = DatasetInfo()
         subset = []
 
         for dType in self.dTypes:
-            samples = sample_info[dType]['samples'].keys()
-            for sample_name in samples:
+            datasets = dataset_info[dType]['datasets'].keys()
+            for dataset_name in datasets:
 
                 subset.append(
                     self.dataset_class(
-                        dType, sample_name, self.data_format,
+                        dType, dataset_name, self.data_format,
                         storage_base=storage_base
                     )
                 )
@@ -348,7 +357,7 @@ def get_das_filelist(data_location, redirector=redirector):
     filelist = [redirector+f.replace('\n','') for f in open(filelist_name).readlines()]
     return filelist
 
-### For updating samples.yml from DAS
+### For updating datasets.yml from DAS
 def dataset_name_from_das(self, das_name): 
     if self.isMC:
         name = das_name.split('/')[1].split('_TuneCP5_')[0]
@@ -374,10 +383,10 @@ def dataset_name_from_das(self, das_name):
 if __name__ == '__main__':
     
     import argparse
-    parser = argparse.ArgumentParser(description='Initialize the samples.yml file')
+    parser = argparse.ArgumentParser(description='Initialize the datasets.yml file')
     parser.add_argument('--update', '-u', action='store_true', help='Update the datasets from DAS')
-    parser.add_argument('--dType', '-d', type=str, default=None, help='Data type of the sample (e.g. data, GJets, QCD, etc.)')
-    parser.add_argument('--format', '-f', type=str, default=None, help='Format of the sample (e.g. MiniAODv2, NanoAODv9, etc.)')
+    parser.add_argument('--dType', '-d', type=str, default=None, help='Data type of the dataset (e.g. data, GJets, QCD, etc.)')
+    parser.add_argument('--format', '-f', type=str, default=None, help='Format of the dataset (e.g. MiniAODv2, NanoAODv9, etc.)')
 
     args = parser.parse_args()
     
