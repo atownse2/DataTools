@@ -112,6 +112,8 @@ class Dataset:
         self.dTag = 'mc' if self.isMC else 'data'
         if dType == 'signal':
             self.signal_point = signal.SignalPoint(tag=sample_name)
+            self.M_BKK = self.signal_point.M_BKK
+            self.M_R = self.signal_point.M_R
         
         self.sample_name = sample_name
         self.data_format = data_format
