@@ -112,6 +112,8 @@ class Dataset:
         self.dTag = 'mc' if self.isMC else 'data'
         if dType == 'signal':
             self.signal_point = signal.SignalPoint(tag=sample_name)
+            self.M_BKK = self.signal_point.M_BKK
+            self.M_R = self.signal_point.M_R
         
         self.sample_name = sample_name
         self.data_format = data_format
@@ -345,10 +347,10 @@ def get_das_filelist(data_location, redirector=storage.redirector, top_dir=stora
 def sample_name_from_das(self, das_name): 
     if self.isMC:
         name = das_name.split('/')[1].split('_TuneCP5_')[0]
-        era_tag = 'RunIISummer20UL(\d{2})'
+        era_tag = r'RunIISummer20UL(\d{2})'
     else:
         name = das_name.split('/')[1]
-        era_tag = 'Run20(\d{2})'
+        era_tag = r'Run20(\d{2})'
     
     match = re.search(era_tag, das_name)
     if match is None:
