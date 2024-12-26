@@ -26,33 +26,85 @@
             "dataset=/EGamma/Run2018*-UL2018_MiniAODv2-v*/MINIAOD"
         ],
         "datasets": {
-            "EGamma_2018A": {
+            "DoubleEG_Run2016B_HIPM": {
+                "MLNanoAODv9": "local:LOCAL_STORAGE/data/MLNanoAODv9/DoubleEG_Run2016B_HIPM_MLNanoAODv9",
+                "skim_preselection": "local:SKIM_STORAGE/data/skim_preselection/DoubleEG_Run2016B_HIPM_skim_preselection"
+            },
+            "DoubleEG_Run2016C_HIPM": {
+                "MLNanoAODv9": "local:LOCAL_STORAGE/data/MLNanoAODv9/DoubleEG_Run2016C_HIPM_MLNanoAODv9",
+                "skim_preselection": "local:SKIM_STORAGE/data/skim_preselection/DoubleEG_Run2016C_HIPM_skim_preselection"
+            },
+            "DoubleEG_Run2016D_HIPM": {
+                "MLNanoAODv9": "local:LOCAL_STORAGE/data/MLNanoAODv9/DoubleEG_Run2016D_HIPM_MLNanoAODv9",
+                "skim_preselection": "local:SKIM_STORAGE/data/skim_preselection/DoubleEG_Run2016D_HIPM_skim_preselection"
+            },
+            "DoubleEG_Run2016E_HIPM": {
+                "MLNanoAODv9": "local:LOCAL_STORAGE/data/MLNanoAODv9/DoubleEG_Run2016E_HIPM_MLNanoAODv9",
+                "skim_preselection": "local:SKIM_STORAGE/data/skim_preselection/DoubleEG_Run2016E_HIPM_skim_preselection"
+            },
+            "DoubleEG_Run2016F_HIPM": {
+                "MLNanoAODv9": "local:LOCAL_STORAGE/data/MLNanoAODv9/DoubleEG_Run2016F_HIPM_MLNanoAODv9",
+                "skim_preselection": "local:SKIM_STORAGE/data/skim_preselection/DoubleEG_Run2016F_HIPM_skim_preselection"
+            },
+            "DoubleEG_Run2016F": {
+                "MLNanoAODv9": "local:LOCAL_STORAGE/data/MLNanoAODv9/DoubleEG_Run2016F_MLNanoAODv9",
+                "skim_preselection": "local:SKIM_STORAGE/data/skim_preselection/DoubleEG_Run2016F_skim_preselection"
+            },
+            "DoubleEG_Run2016G": {
+                "MLNanoAODv9": "local:LOCAL_STORAGE/data/MLNanoAODv9/DoubleEG_Run2016G_MLNanoAODv9",
+                "skim_preselection": "local:SKIM_STORAGE/data/skim_preselection/DoubleEG_Run2016G_skim_preselection"
+            },
+            "DoubleEG_Run2016H": {
+                "MLNanoAODv9": "local:LOCAL_STORAGE/data/MLNanoAODv9/DoubleEG_Run2016H_MLNanoAODv9",
+                "skim_preselection": "local:SKIM_STORAGE/data/skim_preselection/DoubleEG_Run2016H_skim_preselection"
+            },
+            "DoubleEG_Run2017B": {
+                "MLNanoAODv9": "local:LOCAL_STORAGE/data/MLNanoAODv9/DoubleEG_Run2017B_MLNanoAODv9",
+                "skim_preselection": "local:SKIM_STORAGE/data/skim_preselection/DoubleEG_Run2017B_skim_preselection"
+            },
+            "DoubleEG_Run2017C": {
+                "MLNanoAODv9": "local:LOCAL_STORAGE/data/MLNanoAODv9/DoubleEG_Run2017C_MLNanoAODv9",
+                "skim_preselection": "local:SKIM_STORAGE/data/skim_preselection/DoubleEG_Run2017C_skim_preselection"
+            },
+            "DoubleEG_Run2017D": {
+                "MLNanoAODv9": "local:LOCAL_STORAGE/data/MLNanoAODv9/DoubleEG_Run2017D_MLNanoAODv9",
+                "skim_preselection": "local:SKIM_STORAGE/data/skim_preselection/DoubleEG_Run2017D_skim_preselection"
+            },
+            "DoubleEG_Run2017E": {
+                "MLNanoAODv9": "local:LOCAL_STORAGE/data/MLNanoAODv9/DoubleEG_Run2017E_MLNanoAODv9",
+                "skim_preselection": "local:SKIM_STORAGE/data/skim_preselection/DoubleEG_Run2017E_skim_preselection"
+            },
+            "DoubleEG_Run2017F": {
+                "MLNanoAODv9": "local:LOCAL_STORAGE/data/MLNanoAODv9/DoubleEG_Run2017F_MLNanoAODv9",
+                "skim_preselection": "local:SKIM_STORAGE/data/skim_preselection/DoubleEG_Run2017F_skim_preselection"
+            },
+            "EGamma_Run2018A": {
                 "NanoAODv9": "local:LOCAL_STORAGE/data/NanoAODv9/EGamma_Run2018A",
                 "FlatAODv3": "hadoop:/hadoop/store/user/atownse2/RSTriPhoton/data/FlatAODv3/EGamma_2018A_FlatAODv3",
-                "MLNanoAODv9": "local:LOCAL_STORAGE/data/MLNanoAODv9/EGamma_2018A_MLNanoAODv9",
+                "MLNanoAODv9": "local:LOCAL_STORAGE/data/MLNanoAODv9/EGamma_Run2018A_MLNanoAODv9",
                 "MiniAODv2": "das:/EGamma/Run2018A-UL2018_MiniAODv2-v1/MINIAOD",
-                "skim_preselection": "local:SKIM_STORAGE/data/skim_preselection/EGamma_2018A_skim_preselection"
+                "skim_preselection": "local:SKIM_STORAGE/data/skim_preselection/EGamma_Run2018A_skim_preselection"
             },
-            "EGamma_2018B": {
+            "EGamma_Run2018B": {
                 "NanoAODv9": "local:LOCAL_STORAGE/data/NanoAODv9/EGamma_Run2018B",
                 "FlatAODv3": "hadoop:/hadoop/store/user/atownse2/RSTriPhoton/data/FlatAODv3/EGamma_2018B_FlatAODv3",
-                "MLNanoAODv9": "local:LOCAL_STORAGE/data/MLNanoAODv9/EGamma_2018B_MLNanoAODv9",
+                "MLNanoAODv9": "local:LOCAL_STORAGE/data/MLNanoAODv9/EGamma_Run2018B_MLNanoAODv9",
                 "MiniAODv2": "das:/EGamma/Run2018B-UL2018_MiniAODv2-v1/MINIAOD",
-                "skim_preselection": "local:SKIM_STORAGE/data/skim_preselection/EGamma_2018B_skim_preselection"
+                "skim_preselection": "local:SKIM_STORAGE/data/skim_preselection/EGamma_Run2018B_skim_preselection"
             },
-            "EGamma_2018C": {
+            "EGamma_Run2018C": {
                 "NanoAODv9": "local:LOCAL_STORAGE/data/NanoAODv9/EGamma_Run2018C",
                 "FlatAODv3": "hadoop:/hadoop/store/user/atownse2/RSTriPhoton/data/FlatAODv3/EGamma_2018C_FlatAODv3",
-                "MLNanoAODv9": "local:LOCAL_STORAGE/data/MLNanoAODv9/EGamma_2018C_MLNanoAODv9",
+                "MLNanoAODv9": "local:LOCAL_STORAGE/data/MLNanoAODv9/EGamma_Run2018C_MLNanoAODv9",
                 "MiniAODv2": "das:/EGamma/Run2018C-UL2018_MiniAODv2-v1/MINIAOD",
-                "skim_preselection": "local:SKIM_STORAGE/data/skim_preselection/EGamma_2018C_skim_preselection"
+                "skim_preselection": "local:SKIM_STORAGE/data/skim_preselection/EGamma_Run2018C_skim_preselection"
             },
-            "EGamma_2018D": {
+            "EGamma_Run2018D": {
                 "NanoAODv9": "local:LOCAL_STORAGE/data/NanoAODv9/EGamma_Run2018D",
                 "FlatAODv3": "hadoop:/hadoop/store/user/atownse2/RSTriPhoton/data/FlatAODv3/EGamma_2018D_FlatAODv3",
-                "MLNanoAODv9": "local:LOCAL_STORAGE/data/MLNanoAODv9/EGamma_2018D_MLNanoAODv9",
+                "MLNanoAODv9": "local:LOCAL_STORAGE/data/MLNanoAODv9/EGamma_Run2018D_MLNanoAODv9",
                 "MiniAODv2": "das:/EGamma/Run2018D-UL2018_MiniAODv2-v2/MINIAOD",
-                "skim_preselection": "local:SKIM_STORAGE/data/skim_preselection/EGamma_2018D_skim_preselection"
+                "skim_preselection": "local:SKIM_STORAGE/data/skim_preselection/EGamma_Run2018D_skim_preselection"
             }
         }
     },

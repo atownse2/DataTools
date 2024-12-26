@@ -13,10 +13,10 @@ plot_dir = output_dir+"/plots"
 ## Local storage
 USER = os.environ['USER']
 hadoop_storage = f'/hadoop/store/user/{USER}/RSTriPhoton'
-vast_storage = f'/project01/ndcms/{USER}/RSTriPhoton'
+vast_storage = f'/project01/ndcms/{USER}'
 
-# local_storage = vast_storage
-local_storage = top_dir
+local_storage = vast_storage
+# local_storage = top_dir
 skim_storage = top_dir
 
 all_data_storages = {'vast': vast_storage, 'hadoop': hadoop_storage}

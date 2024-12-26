@@ -17,8 +17,7 @@ years = ["2016", "2017", "2018"]
 lumis = {
   "2016" : 35.9, # fb^-1
   "2017" : 41.5,
-#   "2018" : 59.6
-  "2018": 59.6/10 # 10% of 2018 data for now
+  "2018": 59.6
   }
 
 
@@ -201,6 +200,7 @@ class Datasets:
             data_format: str,
             subset: Union[str, List[str], List[Dataset]] = None,
             storage_base: str = None,
+            test: bool = False,
             ):
         """
         Initialize a Datasets object
@@ -239,6 +239,7 @@ class Datasets:
             return list(self.datasets.values())[key]
         elif isinstance(key, str):
             subset = [d for name, d in self.datasets.items() if key in name]
+            # print([s.name for s in subset])
             if len(subset) == 1:
                 return subset[0]
             elif len(subset) > 1:
