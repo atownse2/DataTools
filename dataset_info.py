@@ -95,6 +95,7 @@ class Dataset:
             acess: str = None,
             storage_base: str = None,
             update_dataset_info: bool = False,
+            **kwargs
             ):
         """
         Initialize a dataset object
@@ -118,6 +119,8 @@ class Dataset:
         self.sample_name = sample_name
         self.data_format = data_format
         
+        self.kwargs = kwargs
+        
         if update_dataset_info:
             DatasetInfo().add_dataset(dType, sample_name, data_format, acess)
 
@@ -130,6 +133,7 @@ class Dataset:
             assert storage_base is not None, "Storage base must be specified if access specification is not"
             print(f"Warning: Access not specified for dataset {sample_name}_{data_format}, using {storage_base} instead. Consider updating Datasets.json somehow.")
             self.access = f"local:{storage_base}/{self.dTag}/{self.data_format}/{self.sample_name}"
+
 
     def __getitem__(self, key):
         if key in self.__dict__:
@@ -201,6 +205,7 @@ class Datasets:
             subset: Union[str, List[str], List[Dataset]] = None,
             storage_base: str = None,
             test: bool = False,
+            **kwargs
             ):
         """
         Initialize a Datasets object
@@ -222,7 +227,10 @@ class Datasets:
 
         self.data_format = data_format
 
+        self.kwargs = kwargs
+
         self.datasets = self.get_datasets(subset, storage_base)
+
 
     def __iter__(self):
         return iter(self.datasets.values())
@@ -286,7 +294,8 @@ class Datasets:
                 _subset = [
                     self.dataset_class(
                         s[0], s[1], self.data_format,
-                        storage_base=storage_base
+                        storage_base=storage_base,
+                        **self.kwargs
                         ) for s in subset
                     ]
                 return {d.name: d for d in _subset}
@@ -301,7 +310,8 @@ class Datasets:
                 subset.append(
                     self.dataset_class(
                         dType, sample_name, self.data_format,
-                        storage_base=storage_base
+                        storage_base=storage_base,
+                        **self.kwargs
                     )
                 )
 
