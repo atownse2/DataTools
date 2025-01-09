@@ -7,19 +7,19 @@ import json
 import re
 
 import data_tools.storage_config as storage
-import data_tools.signal_info as signal
+from data_tools import signal_info
 
 
 all_data_formats = ['MiniAODv2', 'NanoAODv9']
 
-years = ["2016", "2017", "2018"]
+years = ["2016_HIPM", "2016", "2017", "2018"]
 
 lumis = {
-  "2016" : 35.9, # fb^-1
-  "2017" : 41.5,
-  "2018": 59.6
-  }
-
+    "2016_HIPM" : 20.103495005, # fb^-1
+    "2016" : 37.184259631,
+    "2017" : 43.178270568,
+    "2018": 62.448754676 
+} # TODO check with someone that I used brilcalc correctly
 
 def get_years_from_era(era):
     if "," in era: return era.split(',')
@@ -112,7 +112,7 @@ class Dataset:
         self.isMC = dType != 'data'
         self.dTag = 'mc' if self.isMC else 'data'
         if dType == 'signal':
-            self.signal_point = signal.SignalPoint(tag=sample_name)
+            self.signal_point = signal_info.SignalPoint(tag=sample_name)
             self.M_BKK = self.signal_point.M_BKK
             self.M_R = self.signal_point.M_R
         
@@ -150,6 +150,10 @@ class Dataset:
         print(f"Warning: Year not found in dataset tag {self.sample_name}, defaulting to 2018")
         return "2018"
         # raise ValueError(f'Year not found in dataset tag {self.sample_name}')
+
+    @property
+    def era(self):
+        return self.year
 
     @property
     def name(self):
@@ -231,6 +235,18 @@ class Datasets:
 
         self.datasets = self.get_datasets(subset, storage_base)
 
+    @property
+    def signal_points(self):
+        assert all([dType == 'signal' for dType in self.dTypes]), "Signal points only available for signal datasets"
+        return set([d.signal_point for d in self.datasets.values() if hasattr(d, 'signal_point')])
+
+    @property
+    def signal_point(self):
+        signal_points = self.signal_points
+        if len(signal_points) == 1:
+            return signal_points.pop()
+        elif len(signal_points) > 1:
+            raise ValueError(f"Multiple signal points found in Datasets: {signal_points}")
 
     def __iter__(self):
         return iter(self.datasets.values())
@@ -243,6 +259,16 @@ class Datasets:
 
     def __getitem__(self, key):
         """Return a subset of the datasets or other objects through self.get()"""
+        if isinstance(key, signal_info.SignalPoint):
+            subset = [d for d in self.datasets.values() if d.signal_point == key]
+            if len(subset) == 1:
+                return subset[0]
+            elif len(subset) > 1:
+                _ = type(self)(
+                    self.dTypes, self.era, self.data_format,
+                    subset=subset, 
+                    )
+                return _
         if isinstance(key, int):
             return list(self.datasets.values())[key]
         elif isinstance(key, str):
@@ -293,7 +319,7 @@ class Datasets:
             else:
                 _subset = [
                     self.dataset_class(
-                        s[0], s[1], self.data_format,
+                        s.dType, s.sample_name, self.data_format,
                         storage_base=storage_base,
                         **self.kwargs
                         ) for s in subset

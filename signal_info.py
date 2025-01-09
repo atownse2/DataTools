@@ -3,28 +3,58 @@ import json
 
 from typing import List, Union
 from . import storage_config as stor
+from . import dataset_info
 
+import uproot
 ##
 
 ## Signal mass grid and functions
-mass_grids = {
-    'old' : {
-        'M_BKK' : [180, 250, 500, 1000, 3000],
-        'MOE' : [0.04, 0.02, 0.01, 0.005, 0.0025]
-    },
-    'current' : {
-        'M_BKK' : [180, 250, 500, 1000, 1500, 2000, 2500, 3000],
-        'MOE' : [0.04, 0.02, 0.01, 0.005, 0.0025]
-    },
-}
+# mass_grids = {
+#     'old' : {
+#         'M_BKK' : [180, 250, 500, 1000, 3000],
+#         'MOE' : [0.04, 0.02, 0.01, 0.005, 0.0025]
+#     },
+#     'current' : {
+#         'M_BKK' : [180, 250, 500, 1000, 1500, 2000, 2500, 3000],
+#         'MOE' : [0.04, 0.02, 0.01, 0.005, 0.0025]
+#     },
+# }
 
-# Calculate mass grid from list of BKK masses and MOEs
-def get_mass_grid(version):
-    '''Get mass grid from list of BKK masses and MOEs'''
-    BKKs = mass_grids[version]['M_BKK']
-    MOEs = mass_grids[version]['MOE']
-    return [SignalPoint(M_BKK=M_BKK, MOE=MOE) for M_BKK in BKKs for MOE in MOEs]
+# # Calculate mass grid from list of BKK masses and MOEs
+# def get_mass_grid(version):
+#     '''Get mass grid from list of BKK masses and MOEs'''
+#     BKKs = mass_grids[version]['M_BKK']
+#     MOEs = mass_grids[version]['MOE']
+#     return [SignalPoint(M_BKK=M_BKK, MOE=MOE) for M_BKK in BKKs for MOE in MOEs]
 
+def get_n_events(signal_point, year, data_format='MLNanoAODv9'):
+    name = signal_point.name() + f'_{year}_{data_format}'
+
+    n_events_dict = {}
+
+    cache_file = stor.cache_dir+'/signal_n_events.json'
+    if os.path.exists(cache_file):
+        with open(cache_file, 'r') as f:
+            n_events_dict = json.load(f)
+        
+        if name in n_events_dict:
+            return n_events_dict[name]
+    
+    n_events = 0
+    data_dir = "/project01/ndcms/atownse2/mc/MLNanoAODv9"
+    for file in os.listdir(data_dir):
+        if name not in file:
+            continue
+
+        with uproot.open(f'{data_dir}/{file}') as f:
+            n_events += f['Events'].num_entries
+
+    n_events_dict[name] = n_events
+
+    with open(cache_file, 'w') as f:
+        json.dump(n_events_dict, f, indent=4)
+    
+    return n_events
 
 class SignalPoint:
     tag = 'BkkToGRadionToGGG'
@@ -51,6 +81,12 @@ class SignalPoint:
         else:
             self.M_R = round((M_BKK/2)*MOE, 4)
             self.MOE = MOE
+
+    def __eq__(self, other):
+        return self.M_BKK == other.M_BKK and self.M_R == other.M_R
+
+    def __hash__(self):
+        return hash((self.M_BKK, self.M_R))
 
     def from_tag(self, tag):
         import re
@@ -85,6 +121,10 @@ class SignalPoint:
             tag = tag.replace('.', 'p')
 
         return tag
+
+    def n_events(self, era):
+        years = dataset_info.get_years_from_era(era)
+        return sum([get_n_events(self, year) for year in years])
 
     @property
     def xs(self):
@@ -136,8 +176,6 @@ def get_signal_xs(M_BKK, M_R):
                 xs = float(split_line[2])
                 error = float(split_line[4])
                 if xs > 0:
-                    print(line)
-                    print(f'{signal_point.name()}: {xs} +/- {error}')
                     xs_dict[_entry] = {'xs': xs, 'error': error}
     
     # Clean up
