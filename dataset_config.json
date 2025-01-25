@@ -4,20 +4,84 @@
             "dataset=/GJets_HT-*_TuneCP5_13TeV-madgraphMLM-pythia8/RunIISummer20UL18MiniAODv2-*_realistic_v16_L1v1-v2/MINIAODSIM"
         ],
         "datasets": {
+            "GJets_HT-100To200_2016": {
+                "MLNanoAODv9": "local:LOCAL_STORAGE/mc/MLNanoAODv9/GJets_HT-100To200_2016_MLNanoAODv9",
+                "skim_trigger_study": "local:SKIM_STORAGE/mc/skim_trigger_study/GJets_HT-100To200_2016_skim_trigger_study"
+            },
+            "GJets_HT-200To400_2016": {
+                "MLNanoAODv9": "local:LOCAL_STORAGE/mc/MLNanoAODv9/GJets_HT-200To400_2016_MLNanoAODv9",
+                "skim_trigger_study": "local:SKIM_STORAGE/mc/skim_trigger_study/GJets_HT-200To400_2016_skim_trigger_study"
+            },
+            "GJets_HT-400To600_2016": {
+                "MLNanoAODv9": "local:LOCAL_STORAGE/mc/MLNanoAODv9/GJets_HT-400To600_2016_MLNanoAODv9",
+                "skim_trigger_study": "local:SKIM_STORAGE/mc/skim_trigger_study/GJets_HT-400To600_2016_skim_trigger_study"
+            },
+            "GJets_HT-40To100_2016": {
+                "MLNanoAODv9": "local:LOCAL_STORAGE/mc/MLNanoAODv9/GJets_HT-40To100_2016_MLNanoAODv9",
+                "skim_trigger_study": "local:SKIM_STORAGE/mc/skim_trigger_study/GJets_HT-40To100_2016_skim_trigger_study"
+            },
+            "GJets_HT-600ToInf_2016": {
+                "MLNanoAODv9": "local:LOCAL_STORAGE/mc/MLNanoAODv9/GJets_HT-600ToInf_2016_MLNanoAODv9",
+                "skim_trigger_study": "local:SKIM_STORAGE/mc/skim_trigger_study/GJets_HT-600ToInf_2016_skim_trigger_study"
+            },
+
+            "GJets_HT-100To200_2016_HIPM": {
+                "MLNanoAODv9": "local:LOCAL_STORAGE/mc/MLNanoAODv9/GJets_HT-100To200_2016_HIPM_MLNanoAODv9",
+                "skim_trigger_study": "local:SKIM_STORAGE/mc/skim_trigger_study/GJets_HT-100To200_2016_HIPM_skim_trigger_study"
+            },
+            "GJets_HT-200To400_2016_HIPM": {
+                "MLNanoAODv9": "local:LOCAL_STORAGE/mc/MLNanoAODv9/GJets_HT-200To400_2016_HIPM_MLNanoAODv9",
+                "skim_trigger_study": "local:SKIM_STORAGE/mc/skim_trigger_study/GJets_HT-200To400_2016_HIPM_skim_trigger_study"
+            },
+            "GJets_HT-40To100_2016_HIPM": {
+                "MLNanoAODv9": "local:LOCAL_STORAGE/mc/MLNanoAODv9/GJets_HT-40To100_2016_HIPM_MLNanoAODv9",
+                "skim_trigger_study": "local:SKIM_STORAGE/mc/skim_trigger_study/GJets_HT-40To100_2016_HIPM_skim_trigger_study"
+            },
+            "GJets_HT-600ToInf_2016_HIPM": {
+                "MLNanoAODv9": "local:LOCAL_STORAGE/mc/MLNanoAODv9/GJets_HT-600ToInf_2016_HIPM_MLNanoAODv9",
+                "skim_trigger_study": "local:SKIM_STORAGE/mc/skim_trigger_study/GJets_HT-600ToInf_2016_HIPM_skim_trigger_study"
+            },
+
+            "GJets_HT-100To200_2017": {
+                "MLNanoAODv9": "local:LOCAL_STORAGE/mc/MLNanoAODv9/GJets_HT-100To200_2017_MLNanoAODv9",
+                "skim_trigger_study": "local:SKIM_STORAGE/mc/skim_trigger_study/GJets_HT-100To200_2017_skim_trigger_study"
+            },
+            "GJets_HT-200To400_2017": {
+                "MLNanoAODv9": "local:LOCAL_STORAGE/mc/MLNanoAODv9/GJets_HT-200To400_2017_MLNanoAODv9",
+                "skim_trigger_study": "local:SKIM_STORAGE/mc/skim_trigger_study/GJets_HT-200To400_2017_skim_trigger_study"
+            },
+            "GJets_HT-400To600_2017": {
+                "MLNanoAODv9": "local:LOCAL_STORAGE/mc/MLNanoAODv9/GJets_HT-400To600_2017_MLNanoAODv9",
+                "skim_trigger_study": "local:SKIM_STORAGE/mc/skim_trigger_study/GJets_HT-400To600_2017_skim_trigger_study"
+            },
+            "GJets_HT-40To100_2017": {
+                "MLNanoAODv9": "local:LOCAL_STORAGE/mc/MLNanoAODv9/GJets_HT-40To100_2017_MLNanoAODv9",
+                "skim_trigger_study": "local:SKIM_STORAGE/mc/skim_trigger_study/GJets_HT-40To100_2017_skim_trigger_study"
+            },
+            "GJets_HT-600ToInf_2017": {
+                "MLNanoAODv9": "local:LOCAL_STORAGE/mc/MLNanoAODv9/GJets_HT-600ToInf_2017_MLNanoAODv9",
+                "skim_trigger_study": "local:SKIM_STORAGE/mc/skim_trigger_study/GJets_HT-600ToInf_2017_skim_trigger_study"
+            },
+
             "GJets_HT-100To200_2018": {
-                "MiniAODv2": "das:/GJets_HT-100To200_TuneCP5_13TeV-madgraphMLM-pythia8/RunIISummer20UL18MiniAODv2-4cores5k_106X_upgrade2018_realistic_v16_L1v1-v2/MINIAODSIM"
+                "MLNanoAODv9": "local:LOCAL_STORAGE/mc/MLNanoAODv9/GJets_HT-100To200_2018_MLNanoAODv9",
+                "skim_trigger_study": "local:SKIM_STORAGE/mc/skim_trigger_study/GJets_HT-100To200_2018_skim_trigger_study"
             },
             "GJets_HT-200To400_2018": {
-                "MiniAODv2": "das:/GJets_HT-200To400_TuneCP5_13TeV-madgraphMLM-pythia8/RunIISummer20UL18MiniAODv2-106X_upgrade2018_realistic_v16_L1v1-v2/MINIAODSIM"
+                "MLNanoAODv9": "local:LOCAL_STORAGE/mc/MLNanoAODv9/GJets_HT-200To400_2018_MLNanoAODv9",
+                "skim_trigger_study": "local:SKIM_STORAGE/mc/skim_trigger_study/GJets_HT-200To400_2018_skim_trigger_study"
             },
             "GJets_HT-400To600_2018": {
-                "MiniAODv2": "das:/GJets_HT-400To600_TuneCP5_13TeV-madgraphMLM-pythia8/RunIISummer20UL18MiniAODv2-106X_upgrade2018_realistic_v16_L1v1-v2/MINIAODSIM"
+                "MLNanoAODv9": "local:LOCAL_STORAGE/mc/MLNanoAODv9/GJets_HT-400To600_2018_MLNanoAODv9",
+                "skim_trigger_study": "local:SKIM_STORAGE/mc/skim_trigger_study/GJets_HT-400To600_2018_skim_trigger_study"
             },
             "GJets_HT-40To100_2018": {
-                "MiniAODv2": "das:/GJets_HT-40To100_TuneCP5_13TeV-madgraphMLM-pythia8/RunIISummer20UL18MiniAODv2-106X_upgrade2018_realistic_v16_L1v1-v2/MINIAODSIM"
+                "MLNanoAODv9": "local:LOCAL_STORAGE/mc/MLNanoAODv9/GJets_HT-40To100_2018_MLNanoAODv9",
+                "skim_trigger_study": "local:SKIM_STORAGE/mc/skim_trigger_study/GJets_HT-40To100_2018_skim_trigger_study"
             },
             "GJets_HT-600ToInf_2018": {
-                "MiniAODv2": "das:/GJets_HT-600ToInf_TuneCP5_13TeV-madgraphMLM-pythia8/RunIISummer20UL18MiniAODv2-106X_upgrade2018_realistic_v16_L1v1-v2/MINIAODSIM"
+                "MLNanoAODv9": "local:LOCAL_STORAGE/mc/MLNanoAODv9/GJets_HT-600ToInf_2018_MLNanoAODv9",
+                "skim_trigger_study": "local:SKIM_STORAGE/mc/skim_trigger_study/GJets_HT-600ToInf_2018_skim_trigger_study"
             }
         }
     },

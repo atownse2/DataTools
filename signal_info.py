@@ -105,6 +105,9 @@ class SignalPoint:
         
         return M_BKK, M_R
 
+    @property
+    def short_name(self):
+        return f'{self.M_BKK}_{self.M_R}'
     
     def name(self, decimal=False):
         M_BKK = self.M_BKK

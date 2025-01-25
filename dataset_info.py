@@ -208,6 +208,7 @@ class Datasets:
             data_format: str,
             subset: Union[str, List[str], List[Dataset]] = None,
             storage_base: str = None,
+            combine_eras: bool = False,
             test: bool = False,
             **kwargs
             ):
@@ -257,6 +258,14 @@ class Datasets:
     def get(self, key):
         raise NotImplementedError(f'Getting {key} from {self.dataset_class} not implemented') 
 
+    def copy(self, **kwargs):
+        return type(self)(
+            self.dTypes, self.era, self.data_format,
+            **self.kwargs,
+            **kwargs
+        )
+
+
     def __getitem__(self, key):
         """Return a subset of the datasets or other objects through self.get()"""
         if isinstance(key, signal_info.SignalPoint):
@@ -264,11 +273,7 @@ class Datasets:
             if len(subset) == 1:
                 return subset[0]
             elif len(subset) > 1:
-                _ = type(self)(
-                    self.dTypes, self.era, self.data_format,
-                    subset=subset, 
-                    )
-                return _
+                return self.copy(subset=subset)
         if isinstance(key, int):
             return list(self.datasets.values())[key]
         elif isinstance(key, str):
@@ -277,18 +282,12 @@ class Datasets:
             if len(subset) == 1:
                 return subset[0]
             elif len(subset) > 1:
-                return type(self)(
-                    self.dTypes, self.era, self.data_format,
-                    subset=subset, 
-                    )
+                return self.copy(subset=subset)
             else:
                 return self.get(key)
         elif isinstance(key, slice):
             subset = list(self.datasets.values())[key]
-            return type(self)(
-                self.dTypes, self.era, self.data_format,
-                subset=subset, 
-                )
+            return self.copy(subset=subset)
         elif isinstance(key, list):
             subset = []
             for k in key:
@@ -297,10 +296,7 @@ class Datasets:
                     subset.extend(_subset)
                 elif isinstance(k, int):
                     subset.append(list(self.datasets.values())[k])
-            return type(self)(
-                self.dTypes, self.era, self.data_format,
-                subset=subset, 
-                )
+            return self.copy(subset=subset)
         else:
             raise ValueError(f'Class Datasets does not support key type {type(key)}')
         
@@ -332,7 +328,6 @@ class Datasets:
         for dType in self.dTypes:
             datasets = dataset_info[dType]['datasets'].keys()
             for sample_name in datasets:
-
                 subset.append(
                     self.dataset_class(
                         dType, sample_name, self.data_format,
