@@ -81,6 +81,7 @@ class SignalPoint:
         else:
             self.M_R = round((M_BKK/2)*MOE, 4)
             self.MOE = MOE
+        self.Mass_Ratio = self.M_R/self.M_BKK
 
     def __eq__(self, other):
         return self.M_BKK == other.M_BKK and self.M_R == other.M_R
