@@ -1,8 +1,8 @@
 import os
 import json
 
-from data_tools.dataset_info import Dataset, Datasets
-from data_tools.storage_config import cache_dir
+from analysis_tools.dataset_info import Dataset, Datasets
+from analysis_tools.storage_config import cache_dir
 
 # Class to handle datasets for coffea analysis, which caches the preprocessing steps
 class CoffeaDataset(Dataset):
@@ -35,11 +35,17 @@ class CoffeaDataset(Dataset):
             _fileset = json.load(open(self.fileset_cache))
             _fileset['year'] = self.year
         else:
-            return None
+            raise ValueError(f"Fileset for {self.name} not found.")
         
         # Limit number of files for testing
         if 'n_test_files' in test_args:
-            _fileset['files'] = {f: _fileset['files'][f] for f in list(_fileset['files'])[:test_args['n_test_files']]}
+            
+            if test_args['n_test_files'] <= 0:
+                max_files = len(_fileset['files'])
+            else:
+                max_files = min(test_args['n_test_files'], len(_fileset['files']))
+            print(f"Limiting number of files to {max_files}")
+            _fileset['files'] = {f: _fileset['files'][f] for f in list(_fileset['files'])[:max_files]}
 
         # Split steps into chunks of size step_size
         if step_size is not None:
@@ -70,16 +76,6 @@ class CoffeaDatasets(Datasets):
                     scheduler=scheduler
                 )
             else:
-                # from dask.distributed import LocalCluster, Client
-                # cluster = LocalCluster(n_workers=16)
-                # with Client(cluster) as client:
-                #     available_fileset, _ = preprocess(
-                #         need_to_preprocess,
-                #         skip_bad_files=True,
-                #         save_form=True,
-                #         scheduler=client
-                #     )
-                # cluster.close()
                 available_fileset, _ = preprocess(
                     need_to_preprocess,
                     skip_bad_files=True,

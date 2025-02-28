@@ -1,28 +1,24 @@
 import os
 
-config_dir = os.path.dirname(os.path.abspath(__file__))
-top_dir = os.path.dirname(config_dir)
+top_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 ## Directories
 cache_dir = top_dir+"/cache"
-condor_dir = '/scratch365/atownse2/RSTriPhoton/condor'
 
-output_dir = top_dir+"/outputs"
-plot_dir = output_dir+"/plots"
+def ensure_cache(relative_path):
+    """Ensure that a directory exists in the cache directory."""
+    path = os.path.join(cache_dir, relative_path)
+    if not os.path.exists(path):
+        os.makedirs(path)
+    return path
 
 ## Local storage
 USER = os.environ['USER']
-hadoop_storage = f'/hadoop/store/user/{USER}/RSTriPhoton'
 vast_storage = f'/project01/ndcms/{USER}'
 
-local_storage = vast_storage
-# local_storage = top_dir
-skim_storage = top_dir
-
-all_data_storages = {'vast': vast_storage, 'hadoop': hadoop_storage}
-
-# XRootD
-hadoop_redirector = "root://deepthought.crc.nd.edu/"
-nd_redirector = "root://ndcms.crc.nd.edu/"
-
-redirector = nd_redirector
+## Data Directories
+data_dirs = {
+    "MLNanoAODv9": "/project01/ndcms/atownse2/data/MLNanoAODv9",
+    "skim_preselection": f"{top_dir}/data/skim_preselection",
+    "skim_trigger_study": f"{top_dir}/data/skim_trigger_study",
+}
