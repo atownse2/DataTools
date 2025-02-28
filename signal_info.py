@@ -37,6 +37,7 @@ class SignalPoint:
         else:
             self.M_R = round((M_BKK/2)*MOE, 4)
             self.MOE = MOE
+        self.Mass_Ratio = self.M_R/self.M_BKK
 
         # Remove decimal if integer
         if type(self.M_BKK) != int and self.M_BKK.is_integer():
