@@ -1,6 +1,6 @@
 import os
 
-top_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+top_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 ## Directories
 cache_dir = top_dir+"/cache"

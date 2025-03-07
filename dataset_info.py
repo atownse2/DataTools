@@ -6,8 +6,8 @@ from typing import Union, List
 import json
 import re
 
-import analysis_tools.storage_config as storage
-from analysis_tools import signal_info
+import analysis.tools.storage_config as storage
+from analysis.tools import signal_info
 
 cache_dir = f"{storage.cache_dir}/data"
 if not os.path.isdir(cache_dir):

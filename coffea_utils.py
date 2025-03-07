@@ -1,8 +1,8 @@
 import os
 import json
 
-from analysis_tools.dataset_info import Dataset, Datasets
-from analysis_tools.storage_config import cache_dir
+from . dataset_info import Dataset, Datasets
+from . storage_config import cache_dir
 
 # Class to handle datasets for coffea analysis, which caches the preprocessing steps
 class CoffeaDataset(Dataset):
@@ -30,6 +30,7 @@ class CoffeaDataset(Dataset):
         }
 
     def fileset(self, step_size=None, **test_args):
+
         if os.path.exists(self.fileset_cache):
             self.preprocessed = True
             _fileset = json.load(open(self.fileset_cache))
@@ -62,7 +63,7 @@ class CoffeaDatasets(Datasets):
     dataset_class = CoffeaDataset
     
     def filesets(self, step_size, scheduler=None, **test_args):
-        
+
         need_to_preprocess = { d.name: d.fileset_base() for d in self if not os.path.exists(d.fileset_cache)}
         if need_to_preprocess:
             print(f"Preprocessing {len(need_to_preprocess)} datasets")
