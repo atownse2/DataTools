@@ -1,9 +1,11 @@
 import os
 
-top_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
 ## Directories
-cache_dir = top_dir+"/cache"
+tools_dir = os.path.dirname(os.path.abspath(__file__))
+top_dir = os.path.dirname(os.path.dirname(tools_dir))
+
+cache_dir = f"{top_dir}/cache"
+scripts_dir = f"{top_dir}/scripts"
 
 def ensure_cache(relative_path):
     """Ensure that a directory exists in the cache directory."""

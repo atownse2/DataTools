@@ -6,6 +6,8 @@ from . import storage_config as stor
 condor_dir = stor.ensure_cache('condor')
 submit_dir = stor.ensure_cache('condor/submit')
 
+run_in_env = f"{stor.scripts_dir}/run_in_env.sh"
+
 def create_condor_submission_file(job_name, executable, args, clear_logs=False):
 
     log_dir = f"{condor_dir}/{job_name}"

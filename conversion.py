@@ -2,7 +2,7 @@ import ROOT
 import numpy as np
 import awkward as ak
 
-def to_root_tree(array_or_arrays, tree_name, branch_name_or_branch_names):
+def to_root_tree(array_or_arrays, tree_name, branch_name_or_branch_names, index=False):
     if isinstance(array_or_arrays, list):
         assert isinstance(branch_name_or_branch_names, list)
         assert len(array_or_arrays) == len(branch_name_or_branch_names)
@@ -14,6 +14,10 @@ def to_root_tree(array_or_arrays, tree_name, branch_name_or_branch_names):
         arrays = [array_or_arrays]
         branch_names = [branch_name_or_branch_names]
     
+    if index:
+        arrays.append(np.arange(len(arrays[0])))
+        branch_names.append("index")
+
     for array in arrays:
         if isinstance(array, ak.Array):
             array = ak.to_numpy(array)
