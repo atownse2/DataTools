@@ -19,7 +19,17 @@ USER = os.environ['USER']
 vast_storage = f'/project01/ndcms/{USER}'
 
 ## Data Directories
-data_dirs = {
+def get_storage_dir(data_format, use_ceph=False, **kwargs):
+    if use_ceph:
+        return ceph_data_dirs[data_format]
+    else:
+        return vast_data_dirs[data_format]
+
+ceph_data_dirs = {
+    "MLNanoAODv9": "/cms/cephfs/data/store/user/atownse2/RSTriPhoton/data/MLNanoAODv9",
+}
+
+vast_data_dirs = {
     "MLNanoAODv9": "/project01/ndcms/atownse2/data/MLNanoAODv9",
     "skim_preselection": f"{top_dir}/data/skim_preselection",
     "skim_trigger_study": f"{top_dir}/data/skim_trigger_study",

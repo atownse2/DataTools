@@ -20,33 +20,38 @@ class SignalPoint:
         M_BKK: Union[int, float] = None,
         M_R: Union[int, float] = None,
         MOE: Union[int, float] = None,
+        Mass_Ratio: Union[int, float] = None,
         name: str = None,
         ):
 
         if name is not None:
             M_BKK, M_R = self.from_name(name)
-
-        assert M_BKK is not None and (M_R is not None or MOE is not None), "Must specify M_BKK and either M_R or MOE"
-        assert M_R is None or MOE is None, "Cannot specify both M_R and MOE"
-
-        self.M_BKK = M_BKK
-
-        if M_R is not None:
-            self.M_R = M_R
-            self.MOE = round(M_R/(M_BKK/2), 4)
+        elif M_BKK and M_R:
+            M_BKK = float(M_BKK)
+            M_R = float(M_R)
+        elif M_BKK and MOE:
+            M_BKK = float(M_BKK)
+            M_R = round((M_BKK/2)*MOE, 4)
+        elif M_BKK and Mass_Ratio:
+            M_BKK = float(M_BKK)
+            M_R = round(Mass_Ratio*M_BKK, 4)
         else:
-            self.M_R = round((M_BKK/2)*MOE, 4)
-            self.MOE = MOE
-        self.Mass_Ratio = self.M_R/self.M_BKK
+            raise ValueError(f"Inputs are not valid: M_BKK={M_BKK}, M_R={M_R}, MOE={MOE}, Mass_Ratio={Mass_Ratio}")
 
         # Remove decimal if integer
-        if type(self.M_BKK) != int and self.M_BKK.is_integer():
-            self.M_BKK = int(self.M_BKK)
-        if type(self.M_R) != int and self.M_R.is_integer():
-            self.M_R = int(self.M_R)
+        if type(M_BKK) != int and M_BKK.is_integer():
+            M_BKK = int(M_BKK)
+        if type(M_R) != int and M_R.is_integer():
+            M_R = int(M_R)
 
-        self.Mass_Ratio = self.M_R/self.M_BKK
+        self.M_BKK = round(M_BKK, 6)
+        self.M_R = round(M_R, 6)
+        self.MOE = round(M_R/(M_BKK/2), 6)
+        self.Mass_Ratio = round(M_R/M_BKK, 6)
 
+    @property
+    def observables(self):
+        return self.M_BKK, self.Mass_Ratio
 
     def __eq__(self, other):
         return self.M_BKK == other.M_BKK and self.M_R == other.M_R
@@ -94,19 +99,12 @@ class SignalPoint:
 gridpack_dir = '/cms/cephfs/data/store/user/atownse2/RSTriPhoton/signal/gridpacks/'
 gridpack_name = lambda M_BKK, M_R: f'BkkToGRadionToGGG_M1-{M_BKK}_R0-{M_R}_slc7_amd64_gcc10_CMSSW_12_4_8_tarball.tar.xz'
 
-def get_signal_xs_pb(signal_process, M_BKK, M_R):
+def get_signal_xs_pb(signal_process, signal_point: SignalPoint):
+
+    M_BKK = signal_point.M_BKK
+    M_R = signal_point.M_R
 
     signal_point = SignalPoint(M_BKK=M_BKK, M_R=M_R)
-    _entry = f"{signal_process}_{signal_point.M_BKK}_{signal_point.M_R}"
-
-    xs_dict = {}
-    xs_file = stor.cache_dir+'/signal_xs_pb.json'
-    if os.path.exists(xs_file):
-        with open(xs_file, 'r') as f:
-            xs_dict = json.load(f)
-    
-    if _entry in xs_dict:
-        return xs_dict[_entry]
     
     gridpack = [f for f in os.listdir(gridpack_dir) if signal_point.name in f and signal_process in f][0]
 
@@ -124,6 +122,7 @@ def get_signal_xs_pb(signal_process, M_BKK, M_R):
 
     # Read cross section from .log file
     log_file = 'gridpack_generation.log'
+    entry = None
     with open(log_file, 'r') as f:
         for line in f:
             if 'Cross-section :' in line:
@@ -131,13 +130,13 @@ def get_signal_xs_pb(signal_process, M_BKK, M_R):
                 xs = float(split_line[2])
                 error = float(split_line[4])
                 if xs > 0:
-                    xs_dict[_entry] = {'xs': xs, 'error': error}
-    
+                    entry = {'xs': xs, 'error': error}
+
+
     # Clean up
     os.system(f'rm -rf  {tmpdir}')
-
-    # Save cross sections to yaml file
-    with open(xs_file, 'w') as f:
-        json.dump(xs_dict, f, indent=4)
     
-    return xs_dict[_entry]
+    if entry is None:
+        raise ValueError(f"Could not find cross section for {signal_process} {signal_point.name} in {log_file}")
+
+    return entry

@@ -5,13 +5,17 @@ from typing import Union, List
 
 import json
 import re
+import subprocess
+import textwrap
+
+import multiprocessing as mp
 
 import analysis.tools.storage_config as storage
 from analysis.tools import signal_info
 
-cache_dir = f"{storage.cache_dir}/data"
-if not os.path.isdir(cache_dir):
-    os.makedirs(cache_dir)
+cache_dir = storage.ensure_cache("dataset_info")
+dataset_cache = storage.ensure_cache("dataset_info/datasets")
+xs_cache = storage.ensure_cache("dataset_info/xs")
 
 all_data_formats = ['MiniAODv2', 'NanoAODv9']
 
@@ -29,14 +33,15 @@ dataset_name_include_all = {
     'data_trigger_study': ["SingleElectron", "DoubleEG"],
     'signal': signal_info.signal_processes,
     'GJets': ["GJets_HT"],
+    "QCD": ["QCD_Pt-", "EMEnriched"]
 }
 
 def tag_dataset(dType, years, sample_name_or_filename):
-    if dType not in dataset_name_include_all.keys():
-        print(f"Warning: dType {dType} not recognized, tagging all datasets")
-        return True
-    
-    pass_tag = any([name in sample_name_or_filename for name in dataset_name_include_all[dType]])
+    if dType in dataset_name_include_all.keys():
+        pass_tag = any([name in sample_name_or_filename for name in dataset_name_include_all[dType]])
+    else:
+        pass_tag = dType in sample_name_or_filename
+
     pass_year = any([year in sample_name_or_filename for year in years])
 
     return pass_tag and pass_year
@@ -47,33 +52,19 @@ def get_years_from_era(era):
     elif era == "Run2" : return years
     else: raise ValueError(f'era {era} not recognized')
 
-def get_n_events_in_root_file(file_name, tree_name='Events'):
-    import uproot
-    f = uproot.open(file_name)
-    return f[tree_name].numentries
-
 class Dataset:
     """Class for handling dataset information and access"""
     file_extension = '.root'
 
     def __init__(
-            self,
-            dType: str,
-            sample_name: str,
-            data_format: str,
-            storage_base: str = None,
-            update_dataset_info: bool = False,
-            **kwargs
-            ):
-        """
-        Initialize a dataset object
-
-        Args:
-            dType (str): Data type of the Dataset (e.g. data, GJets, signal, etc.)
-            sample_name (str): Name of the sample (e.g. GJets_HT-40To100_2018)
-            data_format (str): Format of the Dataset (e.g. MiniAODv2, NanoAODv9, etc.)
-            storage_base (str): Base storage directory for the dataset (if stored locally)
-        """
+        self,
+        dType: str,
+        sample_name: str,
+        data_format: str,
+        storage_base: str = None,
+        update_dataset_info: bool = False,
+        **kwargs
+        ):
 
         self.dType = dType
         self.isMC = dType != 'data'
@@ -94,42 +85,6 @@ class Dataset:
         return f'{self.sample_name}_{self.data_format}'
 
     @property
-    def n_events(self):
-
-        if hasattr(self, 'events'):
-            print(f"Warning: If you have already applied a selection, this will not represent the total events in the file")
-            return len(self.events)
-
-        cache_file = f'{cache_dir}/{self.dType}.json'
-        if "reset_cache" in self.kwargs:
-            pass
-        else:
-            if os.path.exists(cache_file):
-                return json.load(open(cache_file))[self.name]
-        
-        # Count Events 
-        n_events = 0
-        for f in self.files:
-            if not 'root' in f:
-                raise NotImplementedError(f"File format {f} not supported")
-            n_events += get_n_events_in_root_file(f)
-        
-        # Update cache
-        old_cache = json.load(open(cache_file)) if os.path.exists(cache_file) else {}
-        old_cache[self.sample_name] = n_events
-        with open(cache_file, 'w') as f:
-            json.dump(old_cache, f, indent=4)
-            
-        return n_events
-
-    def __getitem__(self, key):
-        if key in self.__dict__:
-            return self.__dict__[key]
-        elif hasattr(self, 'get'):
-            return self.get(key)
-        raise KeyError(f'Key {key} not found in {self.__class__}')
-
-    @property
     def year(self):
         for y in years:
             if y in self.sample_name:
@@ -146,7 +101,7 @@ class Dataset:
     def files(self):
         if hasattr(self, '_files'): return self._files
 
-        file_dir = storage.data_dirs[self.data_format]
+        file_dir = storage.get_storage_dir(self.data_format, **self.kwargs)
         file_tag = f"{self.sample_name}_{self.data_format}"
 
         files = []
@@ -157,31 +112,121 @@ class Dataset:
         self._files = files
         return self._files
 
-class Datasets:
-    """Class for intuitively and flexibly acessing multiple datasets"""
+    def __getitem__(self, key):
+        if key in self.__dict__:
+            return self.__dict__[key]
+        elif hasattr(self, 'get'):
+            return self.get(key)
+        raise KeyError(f'Key {key} not found in {self.__class__}')
 
+    @property
+    def xs_info(self, batch_mode=False):
+        """Cross section in pb"""
+        if not self.isMC:
+            raise ValueError(f'Cross section not defined for data datasets')
+
+        xs_file = f"{xs_cache}/{self.sample_name}_xs.json"
+        if not os.path.exists(xs_file):
+            print(f"Cross section for {self.sample_name} does not exist, trying to get it")
+        
+            # Need to find one miniAOD file.
+            datasets_file = f"{dataset_cache}/{self.dType}.json"
+            if not os.path.exists(datasets_file):
+                raise FileNotFoundError(f"Dataset file {datasets_file} not found.")
+
+            datasets_in_dType = json.load(open(datasets_file))['datasets']
+
+            tags = self.sample_name
+            tags = tags.replace("2016preVFP", "RunIISummer20UL16MiniAODv2")
+            tags = tags.replace("2016postVFP", "RunIISummer20UL16MiniAODAPVv2")
+            tags = tags.replace("2017", "RunIISummer20UL17MiniAODv2")
+            tags = tags.replace("2018", "RunIISummer20UL18MiniAODv2")
+            tags = ["_".join(tags.split('_')[:-1]), tags.split('_')[-1]]
+
+            matches = [d for d in datasets_in_dType if all(tag in d for tag in tags)]
+            if not matches:
+                if self.dType == "signal" and "Jets" in self.sample_name:
+                    # This is a special case for the BKK signal, these samples are locally produced
+                    # TODO this is a hack, need to find a better way to do this
+                    dir_base = "/cms/cephfs/data/store/user/atownse2/mc/signal_postGEN_2016preVFP+2016postVFP+2017"
+                    subdir_name = "maod_step_" + self.sample_name.replace("-", "_")
+                    dataset_dir = f"{dir_base}/{subdir_name}"
+                    if not os.path.exists(dataset_dir):
+                        raise ValueError(f"Dataset not found for {self.sample_name} in {dataset_dir}")
+
+                    file = os.path.join(dataset_dir, os.listdir(dataset_dir)[0]).replace("/cms/cephfs/data", "")
+                else:
+                    raise ValueError(f"Dataset not found for {self.sample_name}")
+            elif len(matches) > 1:
+                raise ValueError(f"Multiple datasets found for {self.sample_name}: {matches}")
+            else:
+                dataset = matches[0]
+
+                # Get the first file in the dataset
+                dataset_file = "_".join(dataset.split('/')[1:])
+                files_dict = json.load(open(f"{dataset_cache}/{dataset_file}.json"))
+                file = files_dict['files'][0]
+
+            if batch_mode:
+                return (file, xs_file)
+
+            write_ana_output(file, xs_file)
+            print(f"Cross section written to {xs_file}")
+        
+        if batch_mode:
+            return None
+
+        # Now read the cross section from the file
+        xs_txt = open(xs_file).readlines()
+
+        # Find the line starting with
+        the_line_starts_with = "After filter: final cross section ="
+        lines = [l for l in xs_txt if the_line_starts_with in l]
+        if len(lines) == 0:
+            raise ValueError(f"Cross section not found in {xs_file}")
+        if len(lines) > 1:
+            raise ValueError(f"Multiple cross sections found in {xs_file}: {lines}")
+        line = lines[0]
+        xs, xs_err = line.split("=")[1].replace("pb", "").split("+-")
+        xs = float(xs.strip())
+        xs_err = float(xs_err.strip())
+        return {"xs": xs, "xs_error": xs_err}
+
+        # if not os.path.exists(xs_file):
+        #     raise FileNotFoundError(f'Cross section file {xs_file} not found. Please run update_xs() to create it.')
+        # xs_data = json.load(open(xs_file))
+        # if self.dType == "signal":
+        #     # name = self.sample_name
+        #     name = f"{self.signal_process}_{self.signal_point.short_name}"
+        # else:
+        #     name = f"{self.sample_name}_{self.year}"
+            
+        # if name in xs_data:
+        #     return xs_data[name]
+        # else:
+        #     if self.dType == "signal":
+        #         xs_info = signal_info.get_signal_xs_pb(
+        #             self.signal_process, self.signal_point
+        #         )
+
+        #         xs_data[name] = xs_info
+        #         with open(xs_file, 'w') as f:
+        #             json.dump(xs_data, f, indent=4)
+        #         return xs_info
+        #     else:
+        #         raise KeyError(f'Cross section for sample {self.sample_name} not found in {xs_file}')
+
+class Datasets:
     dataset_class = Dataset
 
     def __init__(
-            self,
-            dType: str,
-            era: str,
-            data_format: str,
-            subset: Union[str, List[str], List[Dataset]] = None,
-            **kwargs
-            ):
-        """
-        Initialize a Datasets object
-
-        Args:
-            dTypes (str or ): Data types of the Datasets (e.g. data, GJets, signal, etc.)
-            era (str): Era of the Datasets (e.g. 2018, Run2, etc.)
-            data_format (str): Format of the Datasets (e.g. MiniAODv2, NanoAODv9, etc.)
-            subset (str, list): Subset of datasets to include can be a list of strings
-                or a list of Dataset objects. String specification can be a comma separated,
-                and should follow the pattern "dType/sample_name" (e.g. "GJets_HT-40To100_2018")
-            storage_base (str): Base storage directory for the datasets (if stored locally)
-        """
+        self,
+        dType: str,
+        era: str,
+        data_format: str,
+        subset: Union[str, List[str], List[Dataset]] = None,
+        **kwargs
+        ):
 
         self.dType = dType
         self.era = era
@@ -198,6 +243,18 @@ class Datasets:
 
         self.set_up_datasets()
 
+    def set_up_datasets(self):
+        self.datasets = {}
+        for f in os.listdir(storage.get_storage_dir(self.data_format, **self.kwargs)):
+            if tag_dataset(self.dType, self.years, f):
+                sample_name = "_".join(f.split('_')[:-2])
+
+                _dataset = self.dataset_class(self.dType, sample_name, self.data_format, **self.kwargs)
+                self.datasets[_dataset.name] = _dataset
+
+        if self.subset is not None:
+            self.datasets = {d.name: d for d in self[self.subset]}
+
     @property
     def name(self):
         if self.dType == 'signal':
@@ -205,6 +262,19 @@ class Datasets:
                 return f"{'-'.join(self.signal_processes)}_{self.signal_point.name}_{self.era}_{self.data_format}"
         return f"{self.dType}_{self.era}_{self.data_format}"
 
+    @property
+    def files(self):
+        return [f for d in self.datasets.values() for f in d.files]
+
+    @property
+    def year(self):
+        years = set([d.year for d in self.datasets.values()])
+        if len(years) == 1:
+            return years.pop()
+        elif len(years) > 1:
+            raise ValueError(f"Multiple years found in Datasets: {years}")
+    
+    # Signal methods
     @property
     def signal_points(self):
         assert self.dType == 'signal', "Signal points only available for signal datasets"
@@ -218,14 +288,6 @@ class Datasets:
             return signal_points.pop()
         elif len(signal_points) > 1:
             raise ValueError(f"Multiple signal points found in Datasets: {signal_points}")
-
-    @property
-    def year(self):
-        years = set([d.year for d in self.datasets.values()])
-        if len(years) == 1:
-            return years.pop()
-        elif len(years) > 1:
-            raise ValueError(f"Multiple years found in Datasets: {years}")
 
     @property
     def signal_processes(self):
@@ -243,38 +305,16 @@ class Datasets:
         else:
             raise ValueError(f"Signal process not found in Datasets: {self.datasets.keys()}")
 
-    @property
-    def files(self):
-        return [f for d in self.datasets.values() for f in d.files]
-
+    # Access methods
     def __iter__(self):
         return iter(self.datasets.values())
 
     def __len__(self):
         return len(self.datasets.keys())
 
-    def get(self, key):
-        raise NotImplementedError(f'Getting {key} from {self.dataset_class} not implemented') 
-
-    def copy(self, **kwargs):
-        return type(self)(
-            self.dType, self.era, self.data_format,
-            **self.kwargs,
-            **kwargs
-        )
-
-
     def __getitem__(self, key):
-        """Return a subset of the datasets or other objects through self.get()"""
-
-        if not isinstance(key, list):
-            key = [key]
-
-        # print(f"Getting {key} from {self.__class__}")
-        # for d in self.datasets.keys():
-        #     print(d)
-        #     print(key[0] in d)
-        #     print()
+        """Return a subset of the datasets"""
+        if not isinstance(key, list): key = [key]
 
         subset = []
         for k in key:
@@ -292,36 +332,48 @@ class Datasets:
                 raise ValueError(f'Class Datasets does not support key type {type(k)}')
         
         if len(subset) == 0:
-            # return self.get(key)
             raise KeyError(f'Key {key} not found in {self.__class__}')
         elif len(subset) == 1:
             return subset[0]
         else:
-            # return self.copy(subset=subset)
             copy =  self.copy()
             copy.datasets = {d.name: d for d in subset}
             return copy
-        
 
-    def set_up_datasets(self):
+    def copy(self, **kwargs):
+        return type(self)(
+            self.dType, self.era, self.data_format,
+            **self.kwargs,
+            **kwargs
+        )
 
-        self.datasets = {}
-        for f in os.listdir(storage.data_dirs[self.data_format]):
-            if tag_dataset(self.dType, self.years, f):
-                if self.dType == 'signal': #TODO there has to be a more intuitive way to specify this
-                    n_underscores_to_keep = 4
-                elif self.dType == 'data':
-                    n_underscores_to_keep = 3
-                elif self.dType == 'GJets':
-                    n_underscores_to_keep = 3
+### Cross Sections
+### TODO: Somehow need to specify the MiniAOD files to run on - right now I will use the existing framework
+def write_ana_output(input_file, output_file):
+    command = textwrap.dedent(f"""
+        source /cvmfs/cms.cern.ch/cmsset_default.sh
+        cd /afs/crc.nd.edu/user/a/atownse2/Public/RSTriPhoton/preprocessing/lobster/releases/CMSSW_15_0_0_pre3/src
+        cmsenv
+        cmsRun ana.py inputFiles={input_file} maxEvents=-1
+        """) # TODO: maybe need to move this release
 
-                sample_name = "_".join(f.split('_')[:n_underscores_to_keep])
+    # Open a log file to write both stdout and stderr
+    with open(output_file, "w") as logfile:
+        # Start the process in bash
+        process = subprocess.Popen(
+            ["bash", "-c", command],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1  # Line-buffered
+        )
 
-                _dataset = self.dataset_class(self.dType, sample_name, self.data_format, **self.kwargs)
-                self.datasets[_dataset.name] = _dataset
+        # Stream the output line by line
+        for line in process.stdout:
+            # print(line, end="")        # Optional: also print to terminal
+            logfile.write(line)        # Write to log file
 
-        if self.subset is not None:
-            self.datasets = {d.name: d for d in self[self.subset]}
+        process.wait()  # Wait for the process to finish
 
 
 #### End Data Tools
