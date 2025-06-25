@@ -2,6 +2,9 @@ import ROOT
 import numpy as np
 import awkward as ak
 
+import random
+random_string = lambda: "".join(random.choices("abcdefghijklmnopqrstuvwxyz0123456789", k=10))
+
 def to_root_tree(array_or_arrays, tree_name, branch_name_or_branch_names, index=False):
     if isinstance(array_or_arrays, list):
         assert isinstance(branch_name_or_branch_names, list)

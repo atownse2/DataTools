@@ -2,14 +2,45 @@ import os
 import json
 
 from . dataset_info import Dataset, Datasets
-from . storage_config import cache_dir
+from . import storage_config as stor
+
+cache_dir = stor.ensure_cache("preprocess")
+vast_cache = stor.ensure_cache("preprocess/vast")
+ceph_cache = stor.ensure_cache("preprocess/ceph")
+
+def file_is_good(file):
+    from coffea.nanoevents import NanoEventsFactory
+    from analysis.tools.coffea_utils import MLNanoAODSchema
+    import awkward as ak
+    print(f"Checking file {file}")
+    events = NanoEventsFactory.from_root(
+        {file: "Events"},
+        schemaclass=MLNanoAODSchema,
+        # delayed=False,
+    ).events()
+    events = events.compute()
+
+    radions = events.GenPart[events.GenPart.pdgId == 9000025]
+    rounded_radion_mass = ak.round(radions.mass, 2)
+
+    n_radion_masses = len(set(ak.flatten(rounded_radion_mass)))
+    if n_radion_masses == 1:
+        return True
+    else:
+        print(f"Failed: File {file} has {n_radion_masses} unique radion masses.")
+        print("Radion masses:", set(ak.flatten(rounded_radion_mass)))
+        return False
 
 # Class to handle datasets for coffea analysis, which caches the preprocessing steps
 class CoffeaDataset(Dataset):
     
     @property
     def fileset_cache(self):
-        return f"{cache_dir}/coffea/{self.name}.json"
+        if self.kwargs.get('use_ceph', False):
+            cache_dir = ceph_cache
+        else:
+            cache_dir = vast_cache
+        return f"{cache_dir}/{self.name}.json"
 
     def cache_fileset(self, fileset):
         _cache = self.fileset_cache
@@ -20,14 +51,18 @@ class CoffeaDataset(Dataset):
             json.dump(fileset, f, indent=4, separators=(',', ':'))
 
     def fileset_base(self):
-        return {
-            'files': {
-                f: {
-                    'object_path' : 'Events'
-                    } for f in self.files
-            },
-            'year' : self.year,
-        }
+
+        fileset_base = {'files': {},}# 'year': self.year}
+        for f in self.files:
+            if self.kwargs.get('use_ceph', False):
+                f = f.replace("/cms/cephfs/data", "root://hactar01.crc.nd.edu/")
+                # f = f.replace("/cms/cephfs/data", "")
+            # fileset_base['files'][f] = {
+            #     'object_path': 'Events',
+            # }
+            fileset_base['files'][f] = "Events"
+
+        return fileset_base
 
     def fileset(self, step_size=None, **test_args):
 
@@ -62,9 +97,11 @@ class CoffeaDataset(Dataset):
 class CoffeaDatasets(Datasets):
     dataset_class = CoffeaDataset
     
-    def filesets(self, step_size, scheduler=None, **test_args):
+    def filesets(self, step_size=None, scheduler=None, preprocess=True, **test_args):
 
         need_to_preprocess = { d.name: d.fileset_base() for d in self if not os.path.exists(d.fileset_cache)}
+        if preprocess == False:
+            return need_to_preprocess
         if need_to_preprocess:
             print(f"Preprocessing {len(need_to_preprocess)} datasets")
 
@@ -116,6 +153,7 @@ MLPhotonArray.MomentumClass = vector.LorentzVectorArray  # noqa: F821
 
 from coffea.nanoevents import NanoAODSchema
 class MLNanoAODSchema(NanoAODSchema):
+    warn_missing_crossrefs = False
     mixins = {
         **NanoAODSchema.mixins,
         "MLPhoton": "MLPhoton",

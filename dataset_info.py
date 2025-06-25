@@ -1,48 +1,65 @@
 import os
-import glob
 
 from typing import Union, List
 
 import json
-import re
 import subprocess
 import textwrap
 
-import multiprocessing as mp
+import analysis.tools.storage_config as stor
 
-import analysis.tools.storage_config as storage
-from analysis.tools import signal_info
+import random
 
-cache_dir = storage.ensure_cache("dataset_info")
-dataset_cache = storage.ensure_cache("dataset_info/datasets")
-xs_cache = storage.ensure_cache("dataset_info/xs")
+# Cache directories
+cache_dir = stor.ensure_cache("dataset_info")
+dataset_cache = stor.ensure_cache("dataset_info/datasets")
+xs_cache = stor.ensure_cache("dataset_info/xs")
 
+# Redirectors
+redirector = "root://hactar01.crc.nd.edu/"
+
+# Constants
 all_data_formats = ['MiniAODv2', 'NanoAODv9']
 
 years = ["2016preVFP", "2016postVFP", "2017", "2018"]
 
-lumis_in_fb = {
-    "2016preVFP" : 37.184259631, # fb^-1
-    "2016postVFP" : 20.103495005,
-    "2017" : 43.178270568,
-    "2018": 62.448754676 
+lumis_in_fb = { # fb^-1
+    "2016" : 36.31, # From twiki (need to divide into pre and post VFP)
+    "2016preVFP" : 19.5, # TODO need to verify this
+    "2016postVFP" : 16.4, # TODO need to verify this
+    # "2016preVFP" : 37.184259631, # From brilcalc without GoldenJSON applied
+    # "2016postVFP" : 20.103495005, # From brilcalc without GoldenJSON applied
+    # "2017" : 43.178270568, # From brilcalc without GoldenJSON applied
+    "2017" : 41.48, # From twiki
+    # "2018": 62.448754676#*0.1 # From brilcalc without GoldenJSON applied
+    "2018": 59.83 # From twiki
 } # TODO check with someone that I used brilcalc correctly
+
+signal_processes = [
+'BkkToGRadionToGGG',
+'BkkToGRadionJetsToGGGJets'
+]
 
 dataset_name_include_all = {
     'data': ["DoubleEG", "EGamma"],
-    'data_trigger_study': ["SingleElectron", "DoubleEG"],
-    'signal': signal_info.signal_processes,
+    'data_trigger_study': ["SingleElectron", "EGamma"],
+    'signal': signal_processes,
     'GJets': ["GJets_HT"],
     "QCD": ["QCD_Pt-", "EMEnriched"]
 }
 
-def tag_dataset(dType, years, sample_name_or_filename):
+# Functions
+def tag_dataset(dType, years, data_format, sample_name_or_filename):
     if dType in dataset_name_include_all.keys():
         pass_tag = any([name in sample_name_or_filename for name in dataset_name_include_all[dType]])
     else:
         pass_tag = dType in sample_name_or_filename
-
-    pass_year = any([year in sample_name_or_filename for year in years])
+    
+    pass_year = False
+    for year in years:
+        if f"{year}_{data_format}" in sample_name_or_filename:
+            pass_year = True
+            break
 
     return pass_tag and pass_year
 
@@ -52,6 +69,80 @@ def get_years_from_era(era):
     elif era == "Run2" : return years
     else: raise ValueError(f'era {era} not recognized')
 
+# Signal
+class SignalPoint:
+
+    def __init__(
+        self,
+        M_BKK: Union[int, float] = None,
+        M_R: Union[int, float] = None,
+        MOE: Union[int, float] = None,
+        Mass_Ratio: Union[int, float] = None,
+        name: str = None,
+        ):
+
+        if name is not None:
+            M_BKK, M_R = self.from_name(name)
+        elif M_BKK and M_R:
+            M_BKK = float(M_BKK)
+            M_R = float(M_R)
+        elif M_BKK and MOE:
+            M_BKK = float(M_BKK)
+            M_R = round((M_BKK/2)*MOE, 4)
+        elif M_BKK and Mass_Ratio:
+            M_BKK = float(M_BKK)
+            M_R = round(Mass_Ratio*M_BKK, 4)
+        else:
+            raise ValueError(f"Inputs are not valid: M_BKK={M_BKK}, M_R={M_R}, MOE={MOE}, Mass_Ratio={Mass_Ratio}")
+
+        # Remove decimal if integer
+        if type(M_BKK) != int and M_BKK.is_integer():
+            M_BKK = int(M_BKK)
+        if type(M_R) != int and M_R.is_integer():
+            M_R = int(M_R)
+
+        self.M_BKK = round(M_BKK, 6)
+        self.M_R = round(M_R, 6)
+        self.MOE = round(M_R/(M_BKK/2), 6)
+        self.Mass_Ratio = round(M_R/M_BKK, 6)
+
+    @property
+    def observables(self):
+        return self.M_BKK, self.Mass_Ratio
+
+    def __eq__(self, other):
+        return self.M_BKK == other.M_BKK and self.M_R == other.M_R
+
+    def __hash__(self):
+        return hash((self.M_BKK, self.M_R))
+
+    def from_name(self, tag):
+        import re
+
+        M_BKK, M_R = None, None
+        if 'M' not in tag or 'R0' not in tag:
+            raise ValueError('Fragment does not contain mass point')
+        else:
+            M_BKK = float(
+                re.search(r'M1-(\d+p\d+|\d+)', tag
+                ).group(1).replace('p', '.'))
+
+            M_R = float(
+                re.search(r'R0-(\d+p\d+|\d+)', tag
+                ).group(1).replace('p', '.'))
+        
+        return M_BKK, M_R
+
+    @property
+    def short_name(self):
+        return f'{self.M_BKK}_{self.M_R}'
+    
+    @property
+    def name(self):
+        return f'M1-{self.M_BKK}_R0-{self.M_R}'.replace('.', 'p')
+
+
+# Dataset Classes
 class Dataset:
     """Class for handling dataset information and access"""
     file_extension = '.root'
@@ -67,13 +158,13 @@ class Dataset:
         ):
 
         self.dType = dType
-        self.isMC = dType != 'data'
+        self.isMC = 'data' not in dType
 
         self.sample_name = sample_name
         self.data_format = data_format
 
         if dType == 'signal':
-            self.signal_point = signal_info.SignalPoint(name=sample_name)
+            self.signal_point = SignalPoint(name=sample_name)
             self.M_BKK = self.signal_point.M_BKK
             self.M_R = self.signal_point.M_R
             self.signal_process = self.sample_name.split('_')[0]
@@ -101,7 +192,7 @@ class Dataset:
     def files(self):
         if hasattr(self, '_files'): return self._files
 
-        file_dir = storage.get_storage_dir(self.data_format, **self.kwargs)
+        file_dir = stor.get_storage_dir(self.data_format, **self.kwargs)
         file_tag = f"{self.sample_name}_{self.data_format}"
 
         files = []
@@ -125,7 +216,7 @@ class Dataset:
         if not self.isMC:
             raise ValueError(f'Cross section not defined for data datasets')
 
-        xs_file = f"{xs_cache}/{self.sample_name}_xs.json"
+        xs_file = f"{xs_cache}/{self.sample_name}_xs.txt"
         if not os.path.exists(xs_file):
             print(f"Cross section for {self.sample_name} does not exist, trying to get it")
         
@@ -162,10 +253,23 @@ class Dataset:
             else:
                 dataset = matches[0]
 
-                # Get the first file in the dataset
                 dataset_file = "_".join(dataset.split('/')[1:])
                 files_dict = json.load(open(f"{dataset_cache}/{dataset_file}.json"))
-                file = files_dict['files'][0]
+
+                success = False
+                n_tries = 0
+                while not success:
+                    try:
+                        file = files_dict['files'][random.randint(0, len(files_dict['files']) - 1)]
+                        write_ana_output(file, xs_file)
+                        parse_xs(xs_file)
+                        success = True
+                    except ValueError as e:
+                        print(f"Error parsing cross section for {self.sample_name}: {e}")
+                        print(f"Trying again with a different file")
+                        n_tries += 1
+                        if n_tries > 10:
+                            raise ValueError(f"Failed to parse cross section for {self.sample_name} after 10 tries")
 
             if batch_mode:
                 return (file, xs_file)
@@ -176,45 +280,7 @@ class Dataset:
         if batch_mode:
             return None
 
-        # Now read the cross section from the file
-        xs_txt = open(xs_file).readlines()
-
-        # Find the line starting with
-        the_line_starts_with = "After filter: final cross section ="
-        lines = [l for l in xs_txt if the_line_starts_with in l]
-        if len(lines) == 0:
-            raise ValueError(f"Cross section not found in {xs_file}")
-        if len(lines) > 1:
-            raise ValueError(f"Multiple cross sections found in {xs_file}: {lines}")
-        line = lines[0]
-        xs, xs_err = line.split("=")[1].replace("pb", "").split("+-")
-        xs = float(xs.strip())
-        xs_err = float(xs_err.strip())
-        return {"xs": xs, "xs_error": xs_err}
-
-        # if not os.path.exists(xs_file):
-        #     raise FileNotFoundError(f'Cross section file {xs_file} not found. Please run update_xs() to create it.')
-        # xs_data = json.load(open(xs_file))
-        # if self.dType == "signal":
-        #     # name = self.sample_name
-        #     name = f"{self.signal_process}_{self.signal_point.short_name}"
-        # else:
-        #     name = f"{self.sample_name}_{self.year}"
-            
-        # if name in xs_data:
-        #     return xs_data[name]
-        # else:
-        #     if self.dType == "signal":
-        #         xs_info = signal_info.get_signal_xs_pb(
-        #             self.signal_process, self.signal_point
-        #         )
-
-        #         xs_data[name] = xs_info
-        #         with open(xs_file, 'w') as f:
-        #             json.dump(xs_data, f, indent=4)
-        #         return xs_info
-        #     else:
-        #         raise KeyError(f'Cross section for sample {self.sample_name} not found in {xs_file}')
+        return parse_xs(xs_file)
 
 class Datasets:
     dataset_class = Dataset
@@ -245,9 +311,9 @@ class Datasets:
 
     def set_up_datasets(self):
         self.datasets = {}
-        for f in os.listdir(storage.get_storage_dir(self.data_format, **self.kwargs)):
-            if tag_dataset(self.dType, self.years, f):
-                sample_name = "_".join(f.split('_')[:-2])
+        for f in os.listdir(stor.get_storage_dir(self.data_format, **self.kwargs)):
+            if tag_dataset(self.dType, self.years, self.data_format, f):
+                sample_name = f.split(f"_{self.data_format}")[0]
 
                 _dataset = self.dataset_class(self.dType, sample_name, self.data_format, **self.kwargs)
                 self.datasets[_dataset.name] = _dataset
@@ -272,6 +338,8 @@ class Datasets:
         if len(years) == 1:
             return years.pop()
         elif len(years) > 1:
+            for d in self:
+                print(f"Warning: Multiple years found in datasets: {d.name}")
             raise ValueError(f"Multiple years found in Datasets: {years}")
     
     # Signal methods
@@ -326,7 +394,7 @@ class Datasets:
                 subset.extend(list(self.datasets.values())[k])
             elif isinstance(k, str):
                 subset += [d for name, d in self.datasets.items() if k in name or k == name]
-            elif isinstance(k, signal_info.SignalPoint):
+            elif isinstance(k, SignalPoint):
                 subset += [d for d in self.datasets.values() if d.signal_point == k]
             else:
                 raise ValueError(f'Class Datasets does not support key type {type(k)}')
@@ -375,6 +443,22 @@ def write_ana_output(input_file, output_file):
 
         process.wait()  # Wait for the process to finish
 
+def parse_xs(xs_file):
+    """Parse the cross section file and return the cross section and error"""
+    xs_txt = open(xs_file).readlines()
+
+    # Find the line starting with
+    the_line_starts_with = "After filter: final cross section ="
+    lines = [l for l in xs_txt if the_line_starts_with in l]
+    if len(lines) == 0:
+        raise ValueError(f"Cross section not found in {xs_file}")
+    if len(lines) > 1:
+        raise ValueError(f"Multiple cross sections found in {xs_file}: {lines}")
+    line = lines[0]
+    xs, xs_err = line.split("=")[1].replace("pb", "").split("+-")
+    xs = float(xs.strip())
+    xs_err = float(xs_err.strip())
+    return {"xs": xs, "xs_error": xs_err}
 
 #### End Data Tools
 
