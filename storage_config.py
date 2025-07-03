@@ -5,11 +5,13 @@ tools_dir = os.path.dirname(os.path.abspath(__file__))
 top_dir = os.path.dirname(os.path.dirname(tools_dir))
 print(f"Top directory: {top_dir}")
 
-cache_dir = f"{top_dir}/cache"
+_cache_dir = f"{top_dir}/cache"
 scripts_dir = f"{top_dir}/scripts"
 
-def ensure_cache(relative_path, cache_dir=cache_dir):
+def ensure_cache(relative_path, cache_dir=None):
     """Ensure that a directory exists in the cache directory."""
+    if cache_dir is None:
+        cache_dir = _cache_dir
     path = os.path.join(cache_dir, relative_path)
     if not os.path.exists(path):
         os.makedirs(path)
