@@ -6,12 +6,11 @@ import json
 import subprocess
 import textwrap
 
-import analysis.tools.storage_config as stor
+import analysis.config as stor
 
 import random
 
 # Cache directories
-cache_dir = stor.ensure_cache("dataset_info")
 dataset_cache = stor.ensure_cache("dataset_info/datasets")
 xs_cache = stor.ensure_cache("dataset_info/xs")
 
@@ -45,7 +44,8 @@ dataset_name_include_all = {
     'data_trigger_study': ["SingleElectron", "EGamma"],
     'signal': signal_processes,
     'GJets': ["GJets_HT"],
-    "QCD": ["QCD_Pt-", "EMEnriched"]
+    "QCD": ["QCD_Pt-", "EMEnriched"],
+    "DYJetsToLL": ["DYJetsToLL_M-50"],
 }
 
 # Functions
@@ -416,11 +416,35 @@ class Datasets:
         )
 
 ### Cross Sections
+def ensure_release():
+    """
+    Ensure the CMSSW release is set up for running the xs analyzer.
+    https://cms-generators.docs.cern.ch/useful-tools-and-links/HowToGenXSecAnalyzer/#during-the-production-of-mc-samples
+    """
+    release = "CMSSW_15_0_0_pre3"
+    release_cache = stor.ensure_cache("releases")
+    release_dir = f"{release_cache}/{release}"
+    if not os.path.exists(release_dir):
+        print(f"Setting up CMSSW release {release} in {release_cache}")
+        os.makedirs(release_dir, exist_ok=True)
+        command = textwrap.dedent(f"""
+            source /cvmfs/cms.cern.ch/cmsset_default.sh
+            cd {release_cache}
+            cmsrel {release}
+            cd {release}/src
+            cmsenv
+            curl https://raw.githubusercontent.com/cms-sw/genproductions/master/Utilities/calculateXSectionAndFilterEfficiency/genXsec_cfg.py -o ana.py
+        """)
+        subprocess.run(command, shell=True, check=True)
+    
+    return release_dir
+
 ### TODO: Somehow need to specify the MiniAOD files to run on - right now I will use the existing framework
 def write_ana_output(input_file, output_file):
+    release_dir = ensure_release()
     command = textwrap.dedent(f"""
         source /cvmfs/cms.cern.ch/cmsset_default.sh
-        cd /afs/crc.nd.edu/user/a/atownse2/Public/RSTriPhoton/preprocessing/lobster/releases/CMSSW_15_0_0_pre3/src
+        cd {release_dir}/src
         cmsenv
         cmsRun ana.py inputFiles={input_file} maxEvents=-1
         """) # TODO: maybe need to move this release

@@ -2,7 +2,8 @@ import os
 import textwrap
 import pickle
 
-from . import storage_config as stor
+# TODO: Maybe this is necessary but also maybe I can make the tools independent of the analysis
+from analysis import config as stor
 import uuid
 
 condor_dir = stor.ensure_cache('condor')

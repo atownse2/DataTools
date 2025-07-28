@@ -9,7 +9,7 @@ import ROOT
 from analysis import modeling as md
 
 from analysis.tools import dataset_info as di
-from analysis.tools import storage_config as stor
+from analysis import config as stor
 from analysis.tools import condor
 
 import textwrap
