@@ -2,7 +2,7 @@ import os
 import sys
 
 tools_dir = os.path.dirname(os.path.abspath(__file__))
-top_dir = os.path.dirname(os.path.dirname(tools_dir))
+top_dir = os.path.dirname(tools_dir)
 cache_dir = os.path.join(top_dir, 'cache')
 if not os.path.exists(cache_dir):
     os.makedirs(cache_dir)

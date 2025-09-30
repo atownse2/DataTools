@@ -4,23 +4,53 @@ import subprocess
 import pickle
 import uuid
 
-from tools import cache
 tools_dir = os.path.dirname(os.path.abspath(__file__))
+top_dir = os.path.dirname(tools_dir)
+import sys
+sys.path.insert(0, top_dir)
+from tools import storage
 
-condor_dir = cache.ensure_cache('condor')
-submit_dir = cache.ensure_cache('condor/submit')
-tasks_dir = cache.ensure_cache('condor/tasks')
+condor_dir = storage.ensure_cache('condor')
+submit_dir = storage.ensure_cache('condor/submit')
+tasks_dir = storage.ensure_cache('condor/tasks')
 
 run_in_cmssw = f"{tools_dir}/run_in_cmssw_env.sh"
 run_in_mamba = f"{tools_dir}/run_in_mamba_env.sh"
 task_worker = os.path.abspath(__file__)
 
 class Task:
-    def __init__(self, func, args, kwargs, condor_output_dir=None):
+    # def __init__(self, func, args, kwargs, condor_output_dir=None):
+    def __init__(self, func, *args, condor_output_dir=None):
+        self.func = func
+        # Accepts: (args), (kwargs), or (args, kwargs)
+        if not args:
+            self.args, self.kwargs = (), {}
+        elif len(args) == 1:
+            if isinstance(args[0], tuple):
+                self.args, self.kwargs = args[0], {}
+            elif isinstance(args[0], dict):
+                self.args, self.kwargs = (), args[0]
+            else:
+                raise ValueError("Single argument must be tuple (args) or dict (kwargs)")
+        elif len(args) == 2 and isinstance(args[0], tuple) and isinstance(args[1], dict):
+            self.args, self.kwargs = args[0], args[1]
+        else:
+            raise ValueError("Task arguments must be (args), (kwargs), or (args, kwargs)")
+        
+        self.condor_output_dir = condor_output_dir
+
+class Task:
+    def __init__(self, func, *args, **kwargs):
         self.func = func
         self.args = args
         self.kwargs = kwargs
-        self.condor_output_dir = condor_output_dir
+        self.condor_output_dir = kwargs.pop('condor_output_dir', None)
+    
+    def run(self):
+        return self.func(*self.args, **self.kwargs)
+
+def worker(task: Task):
+    return task.run()
 
 # default_memory = 16 # GB
 default_memory = 8  # GB
@@ -60,8 +90,9 @@ def run_tasks(
             return merge_results_fn(results)
     else:
         from multiprocessing import Pool
+        
         with Pool(n_cores) as p:
-            results = [p.apply(task.func, task.args, task.kwargs) for task in tasks]
+            results = p.map(worker, tasks)
         if merge_results_fn is not None:
             return merge_results_fn(results)
         return results
@@ -211,7 +242,4 @@ def run_condor_task():
             pickle.dump(result, f)
 
 if __name__ == "__main__":
-    import sys
-    import os
-    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     run_condor_task()
