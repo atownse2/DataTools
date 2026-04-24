@@ -19,27 +19,6 @@ run_in_mamba = f"{tools_dir}/run_in_mamba_env.sh"
 task_worker = os.path.abspath(__file__)
 
 class Task:
-    # def __init__(self, func, args, kwargs, condor_output_dir=None):
-    def __init__(self, func, *args, condor_output_dir=None):
-        self.func = func
-        # Accepts: (args), (kwargs), or (args, kwargs)
-        if not args:
-            self.args, self.kwargs = (), {}
-        elif len(args) == 1:
-            if isinstance(args[0], tuple):
-                self.args, self.kwargs = args[0], {}
-            elif isinstance(args[0], dict):
-                self.args, self.kwargs = (), args[0]
-            else:
-                raise ValueError("Single argument must be tuple (args) or dict (kwargs)")
-        elif len(args) == 2 and isinstance(args[0], tuple) and isinstance(args[1], dict):
-            self.args, self.kwargs = args[0], args[1]
-        else:
-            raise ValueError("Task arguments must be (args), (kwargs), or (args, kwargs)")
-        
-        self.condor_output_dir = condor_output_dir
-
-class Task:
     def __init__(self, func, *args, **kwargs):
         self.func = func
         self.args = args
@@ -53,7 +32,7 @@ def worker(task: Task):
     return task.run()
 
 # default_memory = 16 # GB
-default_memory = 8  # GB
+default_memory = 16  # GB
 default_disk = 4 # GB
 
 def run_tasks(
@@ -61,9 +40,12 @@ def run_tasks(
     n_cores=8,
     merge_results_fn=None,
     use_condor: bool = False,
+    use_taskvine: bool = False,
+    declared_files: list[str] = None,
     condor_job_name: str = None,
     **submit_condor_tasks_kwargs
     ):
+
     if use_condor:
         assert condor_job_name is not None, "condor_job_name must be provided when use_condor is True"
         cluster_id, result_files = submit_condor_tasks(
@@ -88,6 +70,29 @@ def run_tasks(
             
             results = [pickle.load(open(f, 'rb')) for f in result_files]
             return merge_results_fn(results)
+    elif use_taskvine:
+        print("Submitting tasks to Taskvine, remember to start the manager")
+        import ndcctools.taskvine as vine
+        m = vine.Manager(0, name="manager-atownse2") # Listening on all ports
+        if declared_files is not None:
+            print(f"Declaring files for Taskvine")
+            for f in declared_files:
+                m.declare_file(f, cache=True)
+        print("Submitting Jobs")
+        for task in tasks:
+            t = vine.PythonTask(task.func, *task.args, **task.kwargs)
+            m.submit(t)
+
+        # As they complete, display the results:
+        print("Waiting for tasks to complete...")
+        while not m.empty():
+            task = m.wait(5)
+            if task:
+                print(f"Task {task.id} completed with result {task.output}")
+
+        print("All tasks done.")
+
+
     else:
         from multiprocessing import Pool
         
@@ -111,6 +116,33 @@ def submit_condor_tasks(
     """
     Submits a list of tasks to the condor queue.
     """
+    max_tasks_per_submit = 1000
+    if len(tasks) > max_tasks_per_submit:
+        # Split into multiple submissions
+        # Split tasks into chunks
+        split_tasks = [
+            tasks[i:i + max_tasks_per_submit]
+            for i in range(0, len(tasks), max_tasks_per_submit)
+        ]
+        print(f"Splitting {len(tasks)} tasks into {len(split_tasks)} submissions of up to {max_tasks_per_submit} tasks each.")
+        print(f"Checksumming task counts: {[len(t) for t in split_tasks]} (total {sum([len(t) for t in split_tasks])})")
+        for i, task_chunk in enumerate(split_tasks):
+            chunk_job_name = f"{job_name}_part{i}"
+            print(f"Submitting chunk {i+1}/{len(split_tasks)} with {len(task_chunk)} tasks as job '{chunk_job_name}'")
+            submit_condor_tasks(
+                chunk_job_name,
+                task_chunk,
+                clear_logs=clear_logs,
+                env_wrapper=env_wrapper,
+                transfer_on_exit=transfer_on_exit,
+                memory=memory,
+                disk=disk,
+                cache_results=cache_results,
+            )
+        return None, None
+
+
+    print(f"Submitting {len(tasks)} tasks to condor with job name '{job_name}'")
     job_task_dir = f"{tasks_dir}/{job_name}_{uuid.uuid1()}"
     if os.path.exists(job_task_dir):
         os.system(f"rm -rf {job_task_dir}")
